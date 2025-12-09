@@ -22,9 +22,11 @@
     <string name="btn_export">Export Config</string>
 
     <!-- Stats -->
+    <string name="stats_title">Statistics</string>
     <string name="stats_download">Download</string>
     <string name="stats_upload">Upload</string>
     <string name="stats_duration">Duration</string>
+    <string name="stats_packets">Packets</string>
     <string name="stats_server">Server</string>
     <string name="stats_ip">IP Address</string>
     <string name="stats_protocol">Protocol</string>

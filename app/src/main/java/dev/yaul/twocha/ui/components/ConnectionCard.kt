@@ -3,26 +3,44 @@ package dev.yaul.twocha.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.yaul.twocha.R
 import dev.yaul.twocha.ui.theme.*
 import dev.yaul.twocha.vpn.ConnectionState
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
+/**
+ * Material 3 Expressive Connection Card
+ *
+ * Features:
+ * - Spring-based animations for natural feel
+ * - Animated gradient ring during connection
+ * - Pulsing glow effect for status indication
+ * - Morphing button shape
+ */
 @Composable
 fun ConnectionCard(
     state: ConnectionState,
@@ -32,8 +50,9 @@ fun ConnectionCard(
 ) {
     val isConnected = state == ConnectionState.CONNECTED
     val isConnecting = state == ConnectionState.CONNECTING || state == ConnectionState.DISCONNECTING
+    val isError = state == ConnectionState.ERROR
 
-    // Animated status color
+    // Animated status color with spring physics
     val statusColor by animateColorAsState(
         targetValue = when (state) {
             ConnectionState.CONNECTED -> StatusConnected
@@ -41,77 +60,69 @@ fun ConnectionCard(
             ConnectionState.ERROR -> StatusError
             else -> StatusDisconnected
         },
-        animationSpec = tween(300),
+        animationSpec = spring(
+            dampingRatio = SpringPhysics.responsiveDamping,
+            stiffness = SpringPhysics.responsiveStiffness
+        ),
         label = "statusColor"
     )
 
-    // Pulsing animation for connecting state
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseScale"
+    // Glow animation for connecting state
+    val glowAlpha = rememberGlowAnimation(
+        enabled = isConnecting,
+        minAlpha = 0.2f,
+        maxAlpha = 0.6f,
+        durationMillis = 1000
+    )
+
+    // Pulse animation for connected state
+    val pulseScale = rememberPulseAnimation(
+        enabled = isConnected,
+        minScale = 1f,
+        maxScale = 1.03f,
+        durationMillis = 2000
+    )
+
+    // Ring rotation for connecting
+    val ringRotation = rememberRotationAnimation(
+        enabled = isConnecting,
+        durationMillis = 3000
+    )
+
+    // Card scale animation on state change
+    val cardScale by animateFloatAsState(
+        targetValue = if (isConnecting) 0.98f else 1f,
+        animationSpec = Springs.responsive,
+        label = "cardScale"
     )
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .scale(cardScale),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        shape = RoundedCornerShape(24.dp)
+        shape = ComponentShapes.connectionCard
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(Spacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Status indicator with pulse animation
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .scale(if (isConnecting) pulseScale else 1f)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                statusColor.copy(alpha = 0.3f),
-                                statusColor.copy(alpha = 0.1f),
-                                Color.Transparent
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(statusColor.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = when (state) {
-                            ConnectionState.CONNECTED -> Icons.Default.Lock
-                            ConnectionState.CONNECTING -> Icons.Default.Sync
-                            ConnectionState.DISCONNECTING -> Icons.Default.SyncDisabled
-                            ConnectionState.ERROR -> Icons.Default.Error
-                            else -> Icons.Default.LockOpen
-                        },
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp),
-                        tint = statusColor
-                    )
-                }
-            }
+            // Status indicator with animations
+            ExpressiveStatusIndicator(
+                state = state,
+                statusColor = statusColor,
+                glowAlpha = glowAlpha,
+                pulseScale = pulseScale,
+                ringRotation = ringRotation
+            )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
 
-            // Status text
+            // Status text with animation
             Text(
                 text = when (state) {
                     ConnectionState.CONNECTED -> stringResource(R.string.state_connected)
@@ -120,27 +131,39 @@ fun ConnectionCard(
                     ConnectionState.ERROR -> stringResource(R.string.state_error)
                     else -> stringResource(R.string.state_disconnected)
                 },
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
+                style = TextStyles.connectionStatus,
                 color = statusColor
             )
 
             // Server address
             if (serverAddress != null && (isConnected || isConnecting)) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = serverAddress,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Public,
+                        contentDescription = null,
+                        modifier = Modifier.size(IconSize.xs),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(Spacing.xxs))
+                    Text(
+                        text = serverAddress,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Spacing.xl))
 
-            // Connect/Disconnect button
-            AnimatedConnectButton(
+            // Connect/Disconnect button with morphing animation
+            ExpressiveConnectButton(
                 isConnected = isConnected,
                 isLoading = isConnecting,
+                isError = isError,
                 onClick = onToggle
             )
         }
@@ -148,49 +171,214 @@ fun ConnectionCard(
 }
 
 @Composable
-fun AnimatedConnectButton(
+private fun ExpressiveStatusIndicator(
+    state: ConnectionState,
+    statusColor: Color,
+    glowAlpha: Float,
+    pulseScale: Float,
+    ringRotation: Float
+) {
+    val isConnecting = state == ConnectionState.CONNECTING || state == ConnectionState.DISCONNECTING
+    val isConnected = state == ConnectionState.CONNECTED
+
+    Box(
+        modifier = Modifier
+            .size(140.dp)
+            .scale(if (isConnected) pulseScale else 1f),
+        contentAlignment = Alignment.Center
+    ) {
+        // Outer glow ring
+        Box(
+            modifier = Modifier
+                .size(140.dp)
+                .drawBehind {
+                    // Gradient glow effect
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                statusColor.copy(alpha = glowAlpha * 0.5f),
+                                statusColor.copy(alpha = glowAlpha * 0.2f),
+                                Color.Transparent
+                            ),
+                            radius = size.minDimension / 2
+                        )
+                    )
+                }
+        )
+
+        // Animated ring for connecting state
+        if (isConnecting) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .graphicsLayer { rotationZ = ringRotation }
+                    .drawBehind {
+                        val strokeWidth = 3.dp.toPx()
+                        val radius = (size.minDimension - strokeWidth) / 2
+
+                        // Draw arc segments
+                        for (i in 0 until 3) {
+                            val startAngle = i * 120f
+                            drawArc(
+                                color = statusColor.copy(alpha = 0.8f - (i * 0.2f)),
+                                startAngle = startAngle,
+                                sweepAngle = 60f,
+                                useCenter = false,
+                                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                                topLeft = Offset(strokeWidth / 2, strokeWidth / 2),
+                                size = androidx.compose.ui.geometry.Size(
+                                    radius * 2,
+                                    radius * 2
+                                )
+                            )
+                        }
+                    }
+            )
+        }
+
+        // Inner circle with gradient
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            statusColor.copy(alpha = 0.25f),
+                            statusColor.copy(alpha = 0.1f)
+                        )
+                    )
+                )
+                .then(
+                    if (isConnected) {
+                        Modifier.border(
+                            width = 2.dp,
+                            color = statusColor.copy(alpha = 0.5f),
+                            shape = CircleShape
+                        )
+                    } else Modifier
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Center icon
+            Icon(
+                imageVector = when (state) {
+                    ConnectionState.CONNECTED -> Icons.Rounded.Shield
+                    ConnectionState.CONNECTING -> Icons.Rounded.Sync
+                    ConnectionState.DISCONNECTING -> Icons.Rounded.SyncDisabled
+                    ConnectionState.ERROR -> Icons.Rounded.ErrorOutline
+                    else -> Icons.Rounded.ShieldOutlined
+                },
+                contentDescription = null,
+                modifier = Modifier
+                    .size(IconSize.xl)
+                    .then(
+                        if (isConnecting) {
+                            Modifier.graphicsLayer { rotationZ = ringRotation }
+                        } else Modifier
+                    ),
+                tint = statusColor
+            )
+        }
+    }
+}
+
+@Composable
+fun ExpressiveConnectButton(
     isConnected: Boolean,
     isLoading: Boolean,
+    isError: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Button color with spring animation
     val buttonColor by animateColorAsState(
-        targetValue = if (isConnected) Error else Primary,
-        animationSpec = tween(300),
+        targetValue = when {
+            isError -> StatusError
+            isConnected -> StatusError.copy(alpha = 0.9f)
+            else -> MaterialTheme.colorScheme.primary
+        },
+        animationSpec = spring(
+            dampingRatio = SpringPhysics.responsiveDamping,
+            stiffness = SpringPhysics.responsiveStiffness
+        ),
         label = "buttonColor"
+    )
+
+    // Button corner radius morphing
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isLoading) Radius.full else Radius.lg,
+        animationSpec = spring(
+            dampingRatio = SpringPhysics.responsiveDamping,
+            stiffness = SpringPhysics.responsiveStiffness
+        ),
+        label = "cornerRadius"
+    )
+
+    // Button width morphing
+    val buttonWidth by animateFloatAsState(
+        targetValue = if (isLoading) 0.5f else 1f,
+        animationSpec = Springs.responsive,
+        label = "buttonWidth"
     )
 
     Button(
         onClick = onClick,
         enabled = !isLoading,
         modifier = modifier
-            .fillMaxWidth()
-            .height(56.dp),
+            .fillMaxWidth(buttonWidth)
+            .height(ButtonSize.largeHeight),
         colors = ButtonDefaults.buttonColors(
-            containerColor = buttonColor
+            containerColor = buttonColor,
+            disabledContainerColor = buttonColor.copy(alpha = Opacity.medium)
         ),
-        shape = RoundedCornerShape(16.dp)
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(cornerRadius)
     ) {
         if (isLoading) {
             CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(IconSize.md),
                 color = MaterialTheme.colorScheme.onPrimary,
                 strokeWidth = 2.dp
             )
         } else {
-            Icon(
-                imageVector = if (isConnected) Icons.Default.PowerSettingsNew else Icons.Default.PlayArrow,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (isConnected)
-                    stringResource(R.string.btn_disconnect)
-                else
-                    stringResource(R.string.btn_connect),
-                style = MaterialTheme.typography.labelLarge
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = if (isConnected)
+                        Icons.Rounded.PowerSettingsNew
+                    else
+                        Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(IconSize.md)
+                )
+                Spacer(modifier = Modifier.width(Spacing.xs))
+                Text(
+                    text = if (isConnected)
+                        stringResource(R.string.btn_disconnect)
+                    else
+                        stringResource(R.string.btn_connect),
+                    style = TextStyles.button
+                )
+            }
         }
     }
+}
+
+// Preview helper
+@Composable
+fun AnimatedConnectButton(
+    isConnected: Boolean,
+    isLoading: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ExpressiveConnectButton(
+        isConnected = isConnected,
+        isLoading = isLoading,
+        isError = false,
+        onClick = onClick,
+        modifier = modifier
+    )
 }
