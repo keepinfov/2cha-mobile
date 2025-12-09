@@ -23,10 +23,21 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.yaul.twocha.viewmodel.LogItem
+import dev.yaul.twocha.viewmodel.LogLevel
 import dev.yaul.twocha.viewmodel.VpnViewModel
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
+
+/**
+ * Get UI color for a log level
+ */
+private fun LogLevel.getColor(): Color = when (this) {
+    LogLevel.DEBUG -> Color(0xFF7EE787)    // Green
+    LogLevel.INFO -> Color(0xFF58A6FF)     // Blue
+    LogLevel.WARN -> Color(0xFFD29922)     // Orange
+    LogLevel.ERROR -> Color(0xFFFF7B72)    // Red
+    LogLevel.VERBOSE -> Color(0xFF8B949E)  // Gray
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -104,7 +115,7 @@ fun LogsScreen(
                                     text = {
                                         Text(
                                             level.name,
-                                            color = level.color
+                                            color = level.getColor()
                                         )
                                     },
                                     onClick = {
@@ -222,7 +233,7 @@ fun LogsScreen(
                     items = filteredLogs,
                     key = { it.id }
                 ) { log ->
-                    LogEntry(
+                    LogEntryCard(
                         log = log,
                         onCopy = {
                             clipboardManager.setText(
@@ -243,16 +254,17 @@ fun LogsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LogEntry(
+private fun LogEntryCard(
     log: LogItem,
     onCopy: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val color = log.level.getColor()
 
     Card(
         onClick = { expanded = !expanded },
         colors = CardDefaults.cardColors(
-            containerColor = log.level.color.copy(alpha = 0.1f)
+            containerColor = color.copy(alpha = 0.1f)
         ),
         shape = RoundedCornerShape(8.dp)
     ) {
@@ -270,13 +282,13 @@ private fun LogEntry(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
-                        .background(log.level.color.copy(alpha = 0.2f))
+                        .background(color.copy(alpha = 0.2f))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
                         log.level.name,
                         style = MaterialTheme.typography.labelSmall,
-                        color = log.level.color,
+                        color = color,
                         fontFamily = FontFamily.Monospace
                     )
                 }
@@ -334,18 +346,3 @@ private fun LogEntry(
         }
     }
 }
-
-enum class LogLevel(val color: Color) {
-    DEBUG(Color(0xFF7EE787)),      // Green
-    INFO(Color(0xFF58A6FF)),       // Blue
-    WARN(Color(0xFFD29922)),       // Orange
-    ERROR(Color(0xFFFF7B72)),      // Red
-    VERBOSE(Color(0xFF8B949E))     // Gray
-}
-
-data class LogItem(
-    val id: Long = System.currentTimeMillis(),
-    val level: LogLevel,
-    val message: String,
-    val timestamp: String = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
-)

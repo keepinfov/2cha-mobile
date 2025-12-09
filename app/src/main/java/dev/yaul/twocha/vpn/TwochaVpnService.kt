@@ -118,7 +118,7 @@ class TwochaVpnService : VpnService() {
 
                 // Create cipher
                 val cipher = CipherFactory.create(
-                    config.getCipherSuite(),
+                    config.getCipherSuite().toCryptoSuite(),
                     config.getKeyBytes()
                 )
 

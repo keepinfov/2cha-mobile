@@ -16,6 +16,8 @@ import dev.yaul.twocha.vpn.TwochaVpnService
 import dev.yaul.twocha.vpn.VpnStats
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.inject.Inject
 
 @HiltViewModel
@@ -51,11 +53,11 @@ class VpnViewModel @Inject constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    // Logs
-    private val _logs = MutableStateFlow<List<LogEntry>>(emptyList())
-    val logs: StateFlow<List<LogEntry>> = _logs.asStateFlow()
+    // Logs with proper LogItem format
+    private val _logs = MutableStateFlow<List<LogItem>>(emptyList())
+    val logs: StateFlow<List<LogItem>> = _logs.asStateFlow()
 
-    // Settings
+    // Individual settings flows
     val darkMode: StateFlow<Boolean> = preferencesManager.darkMode
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
@@ -64,6 +66,30 @@ class VpnViewModel @Inject constructor(
 
     val autoConnect: StateFlow<Boolean> = preferencesManager.autoConnect
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    // Combined settings state for UI
+    private val _showNotifications = MutableStateFlow(true)
+    private val _keepAliveOnBattery = MutableStateFlow(true)
+
+    val settings: StateFlow<Settings> = combine(
+        darkMode,
+        dynamicColor,
+        autoConnect,
+        _showNotifications,
+        _keepAliveOnBattery
+    ) { darkMode, dynamicColor, autoConnect, showNotifications, keepAliveOnBattery ->
+        Settings(
+            darkMode = darkMode,
+            dynamicColor = dynamicColor,
+            autoConnect = autoConnect,
+            showNotifications = showNotifications,
+            keepAliveOnBattery = keepAliveOnBattery
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        Settings()
+    )
 
     init {
         loadConfig()
@@ -103,7 +129,7 @@ class VpnViewModel @Inject constructor(
                 if (_configErrors.value.isEmpty()) {
                     val json = ConfigParser.toJson(config)
                     preferencesManager.saveConfigJson(json)
-                    addLog("Configuration saved")
+                    addLog(LogLevel.INFO, "Configuration saved")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save config", e)
@@ -120,10 +146,60 @@ class VpnViewModel @Inject constructor(
             try {
                 val config = ConfigParser.parseToml(tomlContent)
                 saveConfig(config)
-                addLog("Configuration imported")
+                addLog(LogLevel.INFO, "Configuration imported")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to import config", e)
                 _errorMessage.value = "Failed to import configuration: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Import configuration from file (Context overload for SettingsScreen)
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun importConfig(context: Context) {
+        // TODO: Implement file picker for config import
+        addLog(LogLevel.INFO, "Import config from file not yet implemented")
+        _errorMessage.value = "Import from file not yet implemented"
+    }
+
+    /**
+     * Export configuration to file
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun exportConfig(context: Context) {
+        viewModelScope.launch {
+            try {
+                val config = _config.value
+                if (config != null) {
+                    val json = ConfigParser.toJson(config)
+                    // TODO: Implement file saving
+                    addLog(LogLevel.INFO, "Export config not yet implemented")
+                    _errorMessage.value = "Export to file not yet implemented"
+                } else {
+                    _errorMessage.value = "No configuration to export"
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to export config", e)
+                _errorMessage.value = "Failed to export configuration: ${e.message}"
+            }
+        }
+    }
+
+    /**
+     * Reset configuration to defaults
+     */
+    fun resetConfig() {
+        viewModelScope.launch {
+            try {
+                val defaultConfig = ConfigParser.createDefault()
+                _config.value = defaultConfig
+                preferencesManager.saveConfigJson(ConfigParser.toJson(defaultConfig))
+                addLog(LogLevel.INFO, "Configuration reset to defaults")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to reset config", e)
+                _errorMessage.value = "Failed to reset configuration: ${e.message}"
             }
         }
     }
@@ -162,7 +238,7 @@ class VpnViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _isLoading.value = true
-                addLog("Connecting to ${config.client.server}...")
+                addLog(LogLevel.INFO, "Connecting to ${config.client.server}...")
 
                 val configJson = ConfigParser.toJson(config)
 
@@ -176,7 +252,7 @@ class VpnViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to connect", e)
                 _errorMessage.value = "Failed to connect: ${e.message}"
-                addLog("Connection failed: ${e.message}")
+                addLog(LogLevel.ERROR, "Connection failed: ${e.message}")
             } finally {
                 _isLoading.value = false
             }
@@ -189,7 +265,7 @@ class VpnViewModel @Inject constructor(
     fun disconnect() {
         viewModelScope.launch {
             try {
-                addLog("Disconnecting...")
+                addLog(LogLevel.INFO, "Disconnecting...")
 
                 val intent = Intent(context, TwochaVpnService::class.java).apply {
                     action = TwochaVpnService.ACTION_DISCONNECT
@@ -213,6 +289,21 @@ class VpnViewModel @Inject constructor(
             ConnectionState.CONNECTED -> disconnect()
             else -> { /* Ignore during transition states */ }
         }
+    }
+
+    /**
+     * Called when VPN permission is denied
+     */
+    fun onVpnPermissionDenied() {
+        _errorMessage.value = "VPN permission denied"
+        addLog(LogLevel.WARN, "VPN permission denied by user")
+    }
+
+    /**
+     * Called when VPN service is started
+     */
+    fun onVpnStarted() {
+        addLog(LogLevel.INFO, "VPN service started")
     }
 
     /**
@@ -243,6 +334,20 @@ class VpnViewModel @Inject constructor(
     }
 
     /**
+     * Update show notifications setting
+     */
+    fun setShowNotifications(enabled: Boolean) {
+        _showNotifications.value = enabled
+    }
+
+    /**
+     * Update keep alive on battery setting
+     */
+    fun setKeepAliveOnBattery(enabled: Boolean) {
+        _keepAliveOnBattery.value = enabled
+    }
+
+    /**
      * Clear error message
      */
     fun clearError() {
@@ -250,11 +355,23 @@ class VpnViewModel @Inject constructor(
     }
 
     /**
-     * Add log entry
+     * Add log entry with level
+     */
+    private fun addLog(level: LogLevel, message: String) {
+        val entry = LogItem(
+            id = System.currentTimeMillis(),
+            level = level,
+            message = message,
+            timestamp = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
+        )
+        _logs.value = (_logs.value + entry).takeLast(100)
+    }
+
+    /**
+     * Add simple log entry (defaults to INFO)
      */
     private fun addLog(message: String) {
-        val entry = LogEntry(System.currentTimeMillis(), message)
-        _logs.value = (_logs.value + entry).takeLast(100)
+        addLog(LogLevel.INFO, message)
     }
 
     /**
@@ -266,9 +383,33 @@ class VpnViewModel @Inject constructor(
 }
 
 /**
- * Log entry data class
+ * Combined settings data class
  */
-data class LogEntry(
-    val timestamp: Long,
-    val message: String
+data class Settings(
+    val darkMode: Boolean = true,
+    val dynamicColor: Boolean = false,
+    val autoConnect: Boolean = false,
+    val showNotifications: Boolean = true,
+    val keepAliveOnBattery: Boolean = true
+)
+
+/**
+ * Log levels matching LogsScreen expectations
+ */
+enum class LogLevel {
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+    VERBOSE
+}
+
+/**
+ * Log item data class matching LogsScreen expectations
+ */
+data class LogItem(
+    val id: Long = System.currentTimeMillis(),
+    val level: LogLevel,
+    val message: String,
+    val timestamp: String = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
 )

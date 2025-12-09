@@ -77,10 +77,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startVpnService() {
-        val intent = Intent(this, TwochaVpnService::class.java).apply {
-            action = TwochaVpnService.ACTION_CONNECT
-        }
-        startForegroundService(intent)
+        // Use ViewModel to connect (it handles config and service start)
+        viewModel.connect()
         viewModel.onVpnStarted()
     }
 }
