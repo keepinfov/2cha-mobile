@@ -252,7 +252,11 @@ class TwochaVpnService : VpnService() {
             config.ipv4.excludeIps.forEach { route ->
                 val parts = route.split("/")
                 if (parts.size == 2) {
-                    builder.excludeRoute(java.net.InetAddress.getByName(parts[0]), parts[1].toInt())
+                    val ipPrefix = android.net.IpPrefix(
+                        java.net.InetAddress.getByName(parts[0]),
+                        parts[1].toInt()
+                    )
+                    builder.excludeRoute(ipPrefix)
                 }
             }
         }
