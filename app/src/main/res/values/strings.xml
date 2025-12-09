@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">2cha</string>
+    <string name="app_description">High-Performance VPN</string>
+
+    <!-- Connection States -->
+    <string name="state_disconnected">Disconnected</string>
+    <string name="state_connecting">Connecting…</string>
+    <string name="state_connected">Connected</string>
+    <string name="state_disconnecting">Disconnecting…</string>
+    <string name="state_error">Error</string>
+
+    <!-- Buttons -->
+    <string name="btn_connect">Connect</string>
+    <string name="btn_disconnect">Disconnect</string>
+    <string name="btn_settings">Settings</string>
+    <string name="btn_config">Configuration</string>
+    <string name="btn_logs">Logs</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_import">Import Config</string>
+    <string name="btn_export">Export Config</string>
+
+    <!-- Stats -->
+    <string name="stats_download">Download</string>
+    <string name="stats_upload">Upload</string>
+    <string name="stats_duration">Duration</string>
+    <string name="stats_server">Server</string>
+    <string name="stats_ip">IP Address</string>
+    <string name="stats_protocol">Protocol</string>
+
+    <!-- Config -->
+    <string name="config_title">VPN Configuration</string>
+    <string name="config_server">Server Address</string>
+    <string name="config_server_hint">vpn.example.com:51820</string>
+    <string name="config_key">Encryption Key</string>
+    <string name="config_key_hint">64 character hex key</string>
+    <string name="config_cipher">Cipher Suite</string>
+    <string name="config_ipv4">IPv4 Address</string>
+    <string name="config_ipv6">IPv6 Address</string>
+    <string name="config_dns">DNS Servers</string>
+    <string name="config_route_all">Route All Traffic</string>
+    <string name="config_mtu">MTU</string>
+    <string name="config_keepalive">Keepalive Interval</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_dark_mode">Dark Mode</string>
+    <string name="settings_dynamic_color">Dynamic Colors</string>
+    <string name="settings_connection">Connection</string>
+    <string name="settings_auto_connect">Auto-connect on startup</string>
+    <string name="settings_reconnect">Auto-reconnect</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_protocol">Protocol Version</string>
+
+    <!-- Logs -->
+    <string name="logs_title">Connection Logs</string>
+    <string name="logs_clear">Clear Logs</string>
+    <string name="logs_copy">Copy Logs</string>
+    <string name="logs_empty">No logs available</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_vpn">VPN Status</string>
+    <string name="notification_channel_desc">Shows VPN connection status</string>
+    <string name="notification_connected">VPN Connected</string>
+    <string name="notification_connecting">Connecting to VPN…</string>
+    <string name="notification_tap_disconnect">Tap to disconnect</string>
+
+    <!-- Errors -->
+    <string name="error_no_config">No configuration found</string>
+    <string name="error_invalid_config">Invalid configuration</string>
+    <string name="error_connection_failed">Connection failed</string>
+    <string name="error_permission_denied">VPN permission denied</string>
+    <string name="error_invalid_key">Invalid encryption key</string>
+    <string name="error_server_unreachable">Server unreachable</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_vpn_permission_title">VPN Permission Required</string>
+    <string name="dialog_vpn_permission_message">2cha needs VPN permission to create a secure tunnel. This allows the app to route your network traffic through the VPN server.</string>
+    <string name="dialog_allow">Allow</string>
+    <string name="dialog_deny">Deny</string>
+</resources>
