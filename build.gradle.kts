@@ -1,10 +1,21 @@
 // Top-level build file for 2cha Android VPN Client
+// Root build.gradle.kts
 plugins {
+    // 1. Stable Android Gradle Plugin
     id("com.android.application") version "8.13.1" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.22" apply false
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22" apply false
-    id("com.google.dagger.hilt.android") version "2.50" apply false
-    id("com.google.devtools.ksp") version "1.9.22-1.0.17" apply false
+    id("com.android.library") version "8.13.1" apply false
+
+    // 2. Stable Kotlin (Use 2.0.21)
+    id("org.jetbrains.kotlin.android") version "2.2.21" apply false
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21" apply false
+
+    // 3. Matching KSP for Kotlin 2.0.21 (Critical)
+    id("com.google.devtools.ksp") version "2.2.10-2.0.2" apply false
+
+    // 4. Hilt (Standard version)
+    id("com.google.dagger.hilt.android") version "2.57.2" apply false
+
+    alias(libs.plugins.compose.compiler) apply false
 }
 
 tasks.register("clean", Delete::class) {
