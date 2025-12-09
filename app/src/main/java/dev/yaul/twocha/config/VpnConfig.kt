@@ -1,6 +1,5 @@
 package dev.yaul.twocha.config
 
-import dev.yaul.twocha.crypto.CipherSuite
 import dev.yaul.twocha.crypto.CryptoUtils
 import dev.yaul.twocha.protocol.Constants
 import kotlinx.serialization.SerialName

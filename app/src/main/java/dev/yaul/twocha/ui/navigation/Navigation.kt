@@ -22,7 +22,7 @@ sealed class Screen(val route: String) {
 fun TwochaNavHost(
     navController: NavHostController,
     viewModel: VpnViewModel,
-    onRequestVpnPermission: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onRequestVpnPermission: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -31,9 +31,9 @@ fun TwochaNavHost(
         modifier = modifier
     ) {
         composable(Screen.Home.route) {
+            // HomeScreen handles VPN permission internally
             HomeScreen(
                 viewModel = viewModel,
-                onRequestVpnPermission = onRequestVpnPermission,
                 onNavigateToConfig = { navController.navigate(Screen.Config.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToLogs = { navController.navigate(Screen.Logs.route) }

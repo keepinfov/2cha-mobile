@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import dev.yaul.twocha.config.CipherSuite
 import dev.yaul.twocha.config.VpnConfig
 import dev.yaul.twocha.viewmodel.VpnViewModel
+import dev.yaul.twocha.vpn.ConnectionState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,7 +29,7 @@ fun ConfigScreen(
 ) {
     val config by viewModel.config.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
-    val isConnected = connectionState == VpnViewModel.ConnectionState.CONNECTED
+    val isConnected = connectionState == ConnectionState.CONNECTED
 
     var serverAddress by remember(config) { mutableStateOf(config?.client?.server ?: "") }
     var encryptionKey by remember(config) { mutableStateOf(config?.crypto?.key ?: "") }
