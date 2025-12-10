@@ -267,7 +267,7 @@ private fun ExpressiveStatusIndicator(
                     ConnectionState.CONNECTING -> Icons.Rounded.Sync
                     ConnectionState.DISCONNECTING -> Icons.Rounded.SyncDisabled
                     ConnectionState.ERROR -> Icons.Rounded.ErrorOutline
-                    else -> Icons.Rounded.ShieldOutlined
+                    else -> Icons.Rounded.Shield
                 },
                 contentDescription = null,
                 modifier = Modifier

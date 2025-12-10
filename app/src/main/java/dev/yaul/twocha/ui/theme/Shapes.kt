@@ -5,6 +5,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.Outline.Generic
+import androidx.compose.ui.graphics.Outline.Rounded
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
@@ -107,7 +109,7 @@ class SquircleShape(
         val radiusPx = with(density) { cornerRadius.toPx() }
         val actualRadius = min(radiusPx, min(size.width, size.height) / 2f)
 
-        return Outline.Generic(
+        return Generic(
             path = createSquirclePath(size, actualRadius, smoothness)
         )
     }
@@ -193,7 +195,7 @@ class MorphingShape(
         val endRadiusPx = with(density) { endRadius.toPx() }
         val currentRadius = startRadiusPx + (endRadiusPx - startRadiusPx) * progress
 
-        return Outline.Rounded(
+        return Rounded(
             roundRect = androidx.compose.ui.geometry.RoundRect(
                 left = 0f,
                 top = 0f,
@@ -249,7 +251,7 @@ class CutCornerShape(
             lineTo(0f, cutSizePx)
             close()
         }
-        return Outline.Generic(path)
+        return Generic(path)
     }
 }
 
