@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 import javax.inject.Inject
@@ -107,19 +108,18 @@ class PreferencesManager @Inject constructor(
 
     // Configuration JSON
     suspend fun getConfigJson(): String? {
-        return dataStore.data.map { preferences ->
-            preferences[KEY_CONFIG_JSON]
-        }.catch { exception ->
-            if (exception is IOException) {
-                emit(null)
-            } else {
-                throw exception
+        return dataStore.data
+            .catch { exception ->
+                if (exception is IOException) {
+                    emit(emptyPreferences())
+                } else {
+                    throw exception
+                }
             }
-        }.let { flow ->
-            var result: String? = null
-            flow.collect { result = it }
-            result
-        }
+            .map { preferences ->
+                preferences[KEY_CONFIG_JSON]
+            }
+            .firstOrNull()
     }
 
     suspend fun saveConfigJson(json: String) {
