@@ -77,6 +77,10 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.animation)
 
+    // Fragments and material components for fragment-based UI
+    implementation("androidx.fragment:fragment-ktx:1.8.2")
+    implementation("com.google.android.material:material:1.12.0")
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
 

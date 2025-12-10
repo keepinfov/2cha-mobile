@@ -5,4 +5,5 @@
     <color name="secondary">#7EE787</color>
     <color name="tertiary">#D29922</color>
     <color name="error">#F85149</color>
+    <color name="onSurfaceVariant">#7A828E</color>
 </resources>

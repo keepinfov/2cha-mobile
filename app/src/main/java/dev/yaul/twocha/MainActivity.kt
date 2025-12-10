@@ -1,148 +1,129 @@
 package dev.yaul.twocha
 
 import android.app.Activity
-import android.content.Intent
 import android.net.VpnService
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.updatePadding
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import dagger.hilt.android.AndroidEntryPoint
-import dev.yaul.twocha.ui.navigation.Screen
-import dev.yaul.twocha.ui.navigation.TwochaNavHost
-import dev.yaul.twocha.ui.theme.TwochaTheme
+import dev.yaul.twocha.ui.fragments.ConfigFragment
+import dev.yaul.twocha.ui.fragments.HomeFragment
+import dev.yaul.twocha.ui.fragments.LogsFragment
+import dev.yaul.twocha.ui.fragments.SettingsFragment
 import dev.yaul.twocha.viewmodel.VpnViewModel
-import dev.yaul.twocha.vpn.TwochaVpnService
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val viewModel: VpnViewModel by viewModels()
 
-    private val vpnPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            // Permission granted, start VPN
-            startVpnService()
-        } else {
-            viewModel.onVpnPermissionDenied()
+    private val vpnPermissionLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                startVpnService()
+            } else {
+                viewModel.onVpnPermissionDenied()
+            }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Enable edge-to-edge display
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        setContentView(R.layout.activity_main)
 
-        setContent {
-            val settings by viewModel.settings.collectAsState()
+        applyEdgeToEdgeInsets()
 
-            TwochaTheme(
-                darkTheme = settings.darkMode,
-                dynamicColor = settings.dynamicColor
-            ) {
-                MainScreen(
-                    viewModel = viewModel,
-                    onRequestVpnPermission = { requestVpnPermission() }
-                )
+        if (savedInstanceState == null) {
+            openHome()
+        }
+
+        findViewById<BottomNavigationView>(R.id.bottom_navigation).setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    openHome()
+                    true
+                }
+
+                R.id.nav_logs -> {
+                    openLogs()
+                    true
+                }
+
+                R.id.nav_settings -> {
+                    openSettings()
+                    true
+                }
+
+                else -> false
             }
         }
     }
 
-    private fun requestVpnPermission() {
+    private fun applyEdgeToEdgeInsets() {
+        val container = findViewById<android.view.View>(R.id.fragment_container)
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+
+        ViewCompat.setOnApplyWindowInsetsListener(container) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(systemBars.left, systemBars.top, systemBars.right, 0)
+            insets
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(bottomNav) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
+            view.updatePadding(left = bars.left, right = bars.right, bottom = bars.bottom)
+            insets
+        }
+    }
+
+    fun openConfig() {
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.fragment_container, ConfigFragment(), ConfigFragment.TAG)
+            .addToBackStack(ConfigFragment.TAG)
+            .commit()
+    }
+
+    private fun openHome() {
+        findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.nav_home
+        replaceRootFragment(HomeFragment(), HomeFragment.TAG)
+    }
+
+    fun openLogs() {
+        findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.nav_logs
+        replaceRootFragment(LogsFragment(), LogsFragment.TAG)
+    }
+
+    fun openSettings() {
+        findViewById<BottomNavigationView>(R.id.bottom_navigation).selectedItemId = R.id.nav_settings
+        replaceRootFragment(SettingsFragment(), SettingsFragment.TAG)
+    }
+
+    private fun replaceRootFragment(fragment: androidx.fragment.app.Fragment, tag: String) {
+        supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        val existing = supportFragmentManager.findFragmentByTag(tag)
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.fragment_container, existing ?: fragment, tag)
+            .commit()
+    }
+
+    fun requestVpnPermission() {
         val intent = VpnService.prepare(this)
         if (intent != null) {
             vpnPermissionLauncher.launch(intent)
         } else {
-            // Permission already granted
             startVpnService()
         }
     }
 
     private fun startVpnService() {
-        // Use ViewModel to connect (it handles config and service start)
         viewModel.connect()
         viewModel.onVpnStarted()
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MainScreen(
-    viewModel: VpnViewModel,
-    onRequestVpnPermission: () -> Unit
-) {
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ) {
-                BottomNavItem.entries.forEach { item ->
-                    NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = currentRoute == item.route,
-                        onClick = {
-                            if (currentRoute != item.route) {
-                                navController.navigate(item.route) {
-                                    popUpTo(Screen.Home.route) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                }
-            }
-        }
-    ) { paddingValues ->
-        TwochaNavHost(
-            navController = navController,
-            viewModel = viewModel,
-            onRequestVpnPermission = onRequestVpnPermission,
-            modifier = Modifier.padding(paddingValues)
-        )
-    }
-}
-
-enum class BottomNavItem(
-    val route: String,
-    val title: String,
-    val icon: ImageVector
-) {
-    Home(Screen.Home.route, "Home", Icons.Filled.Home),
-    Logs(Screen.Logs.route, "Logs", Icons.Outlined.Description),
-    Settings(Screen.Settings.route, "Settings", Icons.Filled.Settings)
 }

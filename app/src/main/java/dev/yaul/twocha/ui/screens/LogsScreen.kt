@@ -54,7 +54,6 @@ fun LogsScreen(
     var showFilterMenu by remember { mutableStateOf(false) }
     var autoScroll by remember { mutableStateOf(true) }
 
-    // Auto-scroll to bottom when new logs arrive
     LaunchedEffect(logs.size, autoScroll) {
         if (autoScroll && logs.isNotEmpty()) {
             listState.animateScrollToItem(logs.size - 1)
@@ -62,104 +61,15 @@ fun LogsScreen(
     }
 
     val filteredLogs = remember(logs, filterLevel) {
-        if (filterLevel == null) logs
-        else logs.filter { it.level == filterLevel }
+        if (filterLevel == null) logs else logs.filter { it.level == filterLevel }
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Logs") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    // Filter button
-                    Box {
-                        IconButton(onClick = { showFilterMenu = true }) {
-                            Badge(
-                                modifier = Modifier.offset(x = 8.dp, y = (-8).dp),
-                                containerColor = if (filterLevel != null)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    Color.Transparent
-                            ) {
-                                if (filterLevel != null) {
-                                    Text("1", style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                            Icon(Icons.Filled.FilterList, contentDescription = "Filter")
-                        }
-
-                        DropdownMenu(
-                            expanded = showFilterMenu,
-                            onDismissRequest = { showFilterMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("All Logs") },
-                                onClick = {
-                                    filterLevel = null
-                                    showFilterMenu = false
-                                },
-                                leadingIcon = {
-                                    if (filterLevel == null) {
-                                        Icon(Icons.Filled.Check, contentDescription = null)
-                                    }
-                                }
-                            )
-                            HorizontalDivider()
-                            LogLevel.entries.forEach { level ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            level.name,
-                                            color = level.getColor()
-                                        )
-                                    },
-                                    onClick = {
-                                        filterLevel = level
-                                        showFilterMenu = false
-                                    },
-                                    leadingIcon = {
-                                        if (filterLevel == level) {
-                                            Icon(Icons.Filled.Check, contentDescription = null)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Copy all logs
-                    IconButton(
-                        onClick = {
-                            val text = filteredLogs.joinToString("\n") { log ->
-                                "${log.timestamp} [${log.level}] ${log.message}"
-                            }
-                            clipboardManager.setText(AnnotatedString(text))
-                        }
-                    ) {
-                        Icon(Icons.Filled.ContentCopy, contentDescription = "Copy All")
-                    }
-
-                    // Clear logs
-                    IconButton(onClick = { viewModel.clearLogs() }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Clear")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        },
         floatingActionButton = {
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Auto-scroll toggle
                 SmallFloatingActionButton(
                     onClick = { autoScroll = !autoScroll },
                     containerColor = if (autoScroll)
@@ -173,7 +83,6 @@ fun LogsScreen(
                     )
                 }
 
-                // Scroll to bottom
                 FloatingActionButton(
                     onClick = {
                         scope.launch {
@@ -188,64 +97,146 @@ fun LogsScreen(
             }
         }
     ) { paddingValues ->
-        if (filteredLogs.isEmpty()) {
-            // Empty state
-            Box(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Icon(
-                        Icons.Filled.Description,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        if (filterLevel != null) "No ${filterLevel?.name?.lowercase()} logs"
-                        else "No logs yet",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "Logs will appear here when you connect",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
+                IconButton(onClick = onNavigateBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-            }
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(vertical = 8.dp)
-            ) {
-                items(
-                    items = filteredLogs,
-                    key = { it.id }
-                ) { log ->
-                    LogEntryCard(
-                        log = log,
-                        onCopy = {
-                            clipboardManager.setText(
-                                AnnotatedString("${log.timestamp} [${log.level}] ${log.message}")
+                Text(
+                    text = "Logs",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Box {
+                    IconButton(onClick = { showFilterMenu = true }) {
+                        Badge(
+                            modifier = Modifier.offset(x = 8.dp, y = (-8).dp),
+                            containerColor = if (filterLevel != null)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                Color.Transparent
+                        ) {
+                            if (filterLevel != null) {
+                                Text("1", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        Icon(Icons.Filled.FilterList, contentDescription = "Filter")
+                    }
+
+                    DropdownMenu(
+                        expanded = showFilterMenu,
+                        onDismissRequest = { showFilterMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("All Logs") },
+                            onClick = {
+                                filterLevel = null
+                                showFilterMenu = false
+                            },
+                            leadingIcon = {
+                                if (filterLevel == null) {
+                                    Icon(Icons.Filled.Check, contentDescription = null)
+                                }
+                            }
+                        )
+                        HorizontalDivider()
+                        LogLevel.entries.forEach { level ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        level.name,
+                                        color = level.getColor()
+                                    )
+                                },
+                                onClick = {
+                                    filterLevel = level
+                                    showFilterMenu = false
+                                },
+                                leadingIcon = {
+                                    if (filterLevel == level) {
+                                        Icon(Icons.Filled.Check, contentDescription = null)
+                                    }
+                                }
                             )
                         }
-                    )
+                    }
                 }
+                IconButton(
+                    onClick = {
+                        val text = filteredLogs.joinToString("\n") { log ->
+                            "${log.timestamp} [${log.level}] ${log.message}"
+                        }
+                        clipboardManager.setText(AnnotatedString(text))
+                    }
+                ) {
+                    Icon(Icons.Filled.ContentCopy, contentDescription = "Copy All")
+                }
+                IconButton(onClick = { viewModel.clearLogs() }) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Clear")
+                }
+            }
 
-                // Spacer for FAB
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
+            if (filteredLogs.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Description,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            if (filterLevel != null) "No ${filterLevel?.name?.lowercase()} logs"
+                            else "No logs yet",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "Logs will appear here when you connect",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(
+                        items = filteredLogs,
+                        key = { it.id }
+                    ) { log ->
+                        LogEntryCard(
+                            log = log,
+                            onCopy = {
+                                clipboardManager.setText(
+                                    AnnotatedString("${log.timestamp} [${log.level}] ${log.message}")
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
