@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -50,11 +51,11 @@ class CrashReportActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val crashReport = intent.getStringExtra(EXTRA_CRASH_REPORT)
-            ?: CrashReporter.consumePendingCrashReport()
+            ?: runCatching { CrashReporter.consumePendingCrashReport() }.getOrNull()
             ?: getString(R.string.crash_dialog_missing)
 
         setContent {
-            TwochaTheme (darkTheme = isSystemInDarkTheme()) {
+            TwochaTheme(darkTheme = isSystemInDarkTheme()) {
                 CrashReportScreen(
                     report = crashReport,
                     onCopy = { copyToClipboard(crashReport) },
@@ -70,6 +71,7 @@ class CrashReportActivity : ComponentActivity() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("Crash report", text)
         clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, R.string.crash_copy, Toast.LENGTH_SHORT).show()
     }
 
     private fun shareReport(report: String) {
@@ -79,7 +81,11 @@ class CrashReportActivity : ComponentActivity() {
             putExtra(Intent.EXTRA_TEXT, report)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        startActivity(Intent.createChooser(shareIntent, getString(R.string.crash_share_title)))
+        runCatching {
+            startActivity(Intent.createChooser(shareIntent, getString(R.string.crash_share_title)))
+        }.onFailure {
+            Toast.makeText(this, R.string.crash_dialog_missing, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun restartApp() {
