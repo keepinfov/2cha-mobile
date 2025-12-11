@@ -83,4 +83,18 @@
     <string name="dialog_vpn_permission_message">2cha needs VPN permission to create a secure tunnel. This allows the app to route your network traffic through the VPN server.</string>
     <string name="dialog_allow">Allow</string>
     <string name="dialog_deny">Deny</string>
+
+    <!-- Crash reporting -->
+    <string name="crash_dialog_title">The app closed unexpectedly</string>
+    <string name="crash_dialog_message">A crash report is available. Would you like to view the details?</string>
+    <string name="crash_dialog_view_details">Show report</string>
+    <string name="crash_dialog_missing">No crash details were found.</string>
+    <string name="crash_screen_title">Crash report</string>
+    <string name="crash_screen_subtitle">Share this log to help debug the issue</string>
+    <string name="crash_screen_description">An unexpected error was captured. You can copy or share the stack trace below.</string>
+    <string name="crash_copy">Copy stack trace</string>
+    <string name="crash_share">Share report</string>
+    <string name="crash_share_title">Share crash report</string>
+    <string name="crash_share_subject">2cha crash report</string>
+    <string name="crash_restart">Restart app</string>
 </resources>

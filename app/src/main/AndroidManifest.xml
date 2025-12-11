@@ -46,6 +46,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".CrashReportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Twocha"
+            android:label="@string/crash_screen_title" />
+
         <!-- VPN Service -->
         <service
             android:name=".vpn.TwochaVpnService"
