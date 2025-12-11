@@ -3,6 +3,8 @@ package dev.yaul.twocha.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.widget.Toast
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import dev.yaul.twocha.ui.theme.*
 import dev.yaul.twocha.viewmodel.VpnViewModel
@@ -41,6 +45,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val settings by viewModel.settings.collectAsState()
 
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -51,6 +56,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .animateContentSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -60,7 +66,10 @@ fun SettingsScreen(
                     .padding(horizontal = Spacing.md, vertical = Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onNavigateBack) {
+                IconButton(onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onNavigateBack()
+                }) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                 }
                 Text(
@@ -71,127 +80,173 @@ fun SettingsScreen(
             }
 
             // Appearance Section
-            SettingsSection(title = "Appearance") {
-                // Theme selector
-                SettingsItem(
-                    icon = Icons.Rounded.Palette,
-                    title = "App Theme",
-                    subtitle = "Choose your preferred theme",
-                    onClick = { showThemeDialog = true }
-                )
-
-                SettingsSwitch(
-                    icon = Icons.Rounded.DarkMode,
-                    title = "Dark Mode",
-                    subtitle = "Use dark theme throughout the app",
-                    checked = settings.darkMode,
-                    onCheckedChange = { viewModel.setDarkMode(it) }
-                )
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    SettingsSwitch(
-                        icon = Icons.Rounded.AutoAwesome,
-                        title = "Dynamic Color",
-                        subtitle = "Use Material You dynamic colors",
-                        checked = settings.dynamicColor,
-                        onCheckedChange = { viewModel.setDynamicColor(it) }
-                    )
+        SettingsSection(title = "Appearance") {
+            // Theme selector
+            SettingsItem(
+                icon = Icons.Rounded.Palette,
+                title = "App Theme",
+                subtitle = "Choose your preferred theme",
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    showThemeDialog = true
                 }
+            )
+
+            SettingsSwitch(
+                icon = Icons.Rounded.DarkMode,
+                title = "Dark Mode",
+                subtitle = "Use dark theme throughout the app",
+                checked = settings.darkMode,
+                onCheckedChange = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.setDarkMode(it)
+                }
+            )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                SettingsSwitch(
+                    icon = Icons.Rounded.AutoAwesome,
+                    title = "Dynamic Color",
+                    subtitle = "Use Material You dynamic colors",
+                    checked = settings.dynamicColor,
+                    onCheckedChange = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.setDynamicColor(it)
+                    }
+                )
             }
+        }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xs))
 
             // Connection Section
             SettingsSection(title = "Connection") {
-                SettingsSwitch(
-                    icon = Icons.Rounded.PlayArrow,
-                    title = "Auto-Connect",
-                    subtitle = "Connect automatically when app starts",
-                    checked = settings.autoConnect,
-                    onCheckedChange = { viewModel.setAutoConnect(it) }
-                )
+            SettingsSwitch(
+                icon = Icons.Rounded.PlayArrow,
+                title = "Auto-Connect",
+                subtitle = "Connect automatically when app starts",
+                checked = settings.autoConnect,
+                onCheckedChange = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.setAutoConnect(it)
+                }
+            )
 
-                SettingsSwitch(
-                    icon = Icons.Rounded.Notifications,
-                    title = "Show Notifications",
-                    subtitle = "Show connection status notifications",
-                    checked = settings.showNotifications,
-                    onCheckedChange = { viewModel.setShowNotifications(it) }
-                )
+            SettingsSwitch(
+                icon = Icons.Rounded.Notifications,
+                title = "Show Notifications",
+                subtitle = "Show connection status notifications",
+                checked = settings.showNotifications,
+                onCheckedChange = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.setShowNotifications(it)
+                }
+            )
 
-                SettingsSwitch(
-                    icon = Icons.Rounded.BatteryChargingFull,
-                    title = "Keep Alive on Battery",
-                    subtitle = "Maintain connection even on battery saver",
-                    checked = settings.keepAliveOnBattery,
-                    onCheckedChange = { viewModel.setKeepAliveOnBattery(it) }
-                )
-            }
+            SettingsSwitch(
+                icon = Icons.Rounded.BatteryChargingFull,
+                title = "Keep Alive on Battery",
+                subtitle = "Maintain connection even on battery saver",
+                checked = settings.keepAliveOnBattery,
+                onCheckedChange = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.setKeepAliveOnBattery(it)
+                }
+            )
+        }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xs))
 
             // Data Section
             SettingsSection(title = "Data") {
-                SettingsItem(
-                    icon = Icons.Rounded.FileUpload,
-                    title = "Export Configuration",
-                    subtitle = "Save configuration to file",
-                    onClick = { viewModel.exportConfig(context) }
-                )
+            SettingsItem(
+                icon = Icons.Rounded.FileUpload,
+                title = "Export Configuration",
+                subtitle = "Save configuration to file",
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.exportConfig(context)
+                }
+            )
 
-                SettingsItem(
-                    icon = Icons.Rounded.FileDownload,
-                    title = "Import Configuration",
-                    subtitle = "Load configuration from file",
-                    onClick = { viewModel.importConfig(context) }
-                )
+            SettingsItem(
+                icon = Icons.Rounded.FileDownload,
+                title = "Import Configuration",
+                subtitle = "Load configuration from file",
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    viewModel.importConfig(context)
+                }
+            )
 
-                SettingsItem(
-                    icon = Icons.Rounded.DeleteForever,
-                    title = "Reset Configuration",
-                    subtitle = "Reset all settings to defaults",
-                    onClick = { showResetDialog = true },
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
+            SettingsItem(
+                icon = Icons.Rounded.DeleteForever,
+                title = "Reset Configuration",
+                subtitle = "Reset all settings to defaults",
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showResetDialog = true
+                },
+                tint = MaterialTheme.colorScheme.error
+            )
+        }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xs))
 
             // About Section
             SettingsSection(title = "About") {
-                SettingsItem(
-                    icon = Icons.Rounded.Info,
-                    title = "About 2cha",
-                    subtitle = "Version, licenses, and more",
-                    onClick = { showAboutDialog = true }
-                )
+            SettingsItem(
+                icon = Icons.Rounded.Info,
+                title = "About 2cha",
+                subtitle = "Version, licenses, and more",
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    showAboutDialog = true
+                }
+            )
 
-                SettingsItem(
-                    icon = Icons.Rounded.Code,
-                    title = "Source Code",
-                    subtitle = "View on GitHub",
-                    trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://github.com/keepinfov/2cha")
-                        }
-                        context.startActivity(intent)
+            SettingsItem(
+                icon = Icons.Rounded.Code,
+                title = "Source Code",
+                subtitle = "View on GitHub",
+                trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        data = Uri.parse("https://github.com/keepinfov/2cha")
                     }
-                )
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    runCatching { context.startActivity(intent) }
+                        .onFailure {
+                            Toast.makeText(
+                                context,
+                                context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                }
+            )
 
-                SettingsItem(
-                    icon = Icons.Rounded.BugReport,
-                    title = "Report Issue",
-                    subtitle = "Report bugs or request features",
-                    trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://github.com/keepinfov/2cha/issues")
-                        }
-                        context.startActivity(intent)
+            SettingsItem(
+                icon = Icons.Rounded.BugReport,
+                title = "Report Issue",
+                subtitle = "Report bugs or request features",
+                trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        data = Uri.parse("https://github.com/keepinfov/2cha/issues")
                     }
-                )
-            }
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    runCatching { context.startActivity(intent) }
+                        .onFailure {
+                            Toast.makeText(
+                                context,
+                                context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                }
+            )
+        }
 
             Spacer(modifier = Modifier.height(Spacing.xl))
 
@@ -276,6 +331,7 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.resetConfig()
                         showResetDialog = false
                     },
@@ -305,6 +361,7 @@ private fun ThemeSelectionDialog(
         title = { Text("Choose Theme") },
         text = {
             Column(
+                modifier = Modifier.animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(Spacing.sm)
             ) {
                 ThemeStyle.entries.forEach { style ->

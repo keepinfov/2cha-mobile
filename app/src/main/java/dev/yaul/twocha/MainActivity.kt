@@ -53,6 +53,12 @@ class MainActivity : AppCompatActivity() {
     fun openConfig() {
         supportFragmentManager
             .beginTransaction()
+            .setCustomAnimations(
+                android.R.anim.slide_in_left,
+                android.R.anim.slide_out_right,
+                android.R.anim.slide_in_left,
+                android.R.anim.slide_out_right
+            )
             .replace(R.id.fragment_container, ConfigFragment(), ConfigFragment.TAG)
             .addToBackStack(ConfigFragment.TAG)
             .commit()
@@ -63,7 +69,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun openSettings() {
-        replaceRootFragment(SettingsFragment(), SettingsFragment.TAG)
+        supportFragmentManager
+            .beginTransaction()
+            .setCustomAnimations(
+                android.R.anim.fade_in,
+                android.R.anim.fade_out,
+                android.R.anim.fade_in,
+                android.R.anim.fade_out
+            )
+            .replace(R.id.fragment_container, SettingsFragment(), SettingsFragment.TAG)
+            .addToBackStack(SettingsFragment.TAG)
+            .commit()
     }
 
     private fun replaceRootFragment(fragment: androidx.fragment.app.Fragment, tag: String) {
