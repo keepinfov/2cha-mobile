@@ -16,11 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FileCopy
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shield
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -298,25 +295,42 @@ private fun ProtocolCard(
                 }
             }
 
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
             ) {
-                InfoChip(
-                    label = stringResource(
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(
                         R.string.home_protocol_version_label,
                         Constants.PROTOCOL_VERSION.toInt()
                     ),
-                    icon = Icons.Rounded.Info
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                InfoChip(
-                    label = config?.crypto?.cipher?.name?.replace("_", "-")
-                        ?: stringResource(R.string.home_cipher_fallback),
-                    icon = Icons.Rounded.Shield
+                Text(
+                    text = stringResource(
+                        R.string.home_cipher_label,
+                        config?.crypto?.cipher?.name?.replace("_", "-")
+                            ?: stringResource(R.string.home_cipher_fallback)
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                InfoChip(
-                    label = stringResource(R.string.home_version_label, BuildConfig.VERSION_NAME),
-                    icon = Icons.Rounded.Settings
+                Text(
+                    text = stringResource(R.string.home_transport_udp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = stringResource(R.string.home_version_label, BuildConfig.VERSION_NAME),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -364,24 +378,6 @@ private fun ProtocolCard(
             }
         }
     }
-}
-
-@Composable
-private fun InfoChip(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    AssistChip(
-        onClick = {},
-        label = { Text(text = label) },
-        leadingIcon = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp)
-            )
-        },
-        colors = AssistChipDefaults.assistChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
-    )
 }
 
 private fun readTextFromUri(context: android.content.Context, uri: Uri): String {

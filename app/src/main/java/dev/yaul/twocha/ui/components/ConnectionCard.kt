@@ -435,7 +435,7 @@ fun ExpressiveConnectButton(
 
     // Button corner radius morphing
     val cornerRadius by animateDpAsState(
-        targetValue = if (isLoading) Radius.full else Radius.lg,
+        targetValue = if (isLoading) Radius.full else Radius.xxl,
         animationSpec = spring(
             dampingRatio = SpringPhysics.responsiveDamping,
             stiffness = SpringPhysics.responsiveStiffness
@@ -445,7 +445,7 @@ fun ExpressiveConnectButton(
 
     // Button width morphing
     val buttonWidth by animateFloatAsState(
-        targetValue = if (isLoading) 0.5f else 1f,
+        targetValue = if (isLoading) 0.65f else 1f,
         animationSpec = Springs.responsive,
         label = "buttonWidth"
     )
@@ -455,7 +455,8 @@ fun ExpressiveConnectButton(
         enabled = !isLoading,
         modifier = modifier
             .fillMaxWidth(buttonWidth)
-            .height(ButtonSize.largeHeight),
+            .height(ButtonSize.largeHeight)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(cornerRadius)),
         colors = ButtonDefaults.buttonColors(
             containerColor = buttonColor,
             disabledContainerColor = buttonColor.copy(alpha = Opacity.medium)

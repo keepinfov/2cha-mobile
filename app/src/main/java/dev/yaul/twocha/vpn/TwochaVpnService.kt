@@ -107,6 +107,9 @@ class TwochaVpnService : VpnService() {
                 _connectionState.value = ConnectionState.CONNECTING
                 isRunning = true
 
+                // Post foreground notification immediately to satisfy Android's 5s requirement
+                startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTING))
+
                 // Parse config
                 val config = dev.yaul.twocha.config.ConfigParser.parseJson(configJson)
 
@@ -142,7 +145,7 @@ class TwochaVpnService : VpnService() {
                     config = config
                 )
 
-                // Start foreground service with notification
+                // Promote notification to connected state once tunnel is ready
                 startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTED))
 
                 _connectionState.value = ConnectionState.CONNECTED
@@ -166,8 +169,10 @@ class TwochaVpnService : VpnService() {
             } catch (e: Exception) {
                 Log.e(TAG, "VPN error", e)
                 _connectionState.value = ConnectionState.ERROR
+                startForeground(NOTIFICATION_ID, createNotification(ConnectionState.ERROR))
             } finally {
-                cleanup()
+                val keepErrorState = _connectionState.value == ConnectionState.ERROR
+                cleanup(preserveError = keepErrorState)
             }
         }
     }
@@ -178,13 +183,13 @@ class TwochaVpnService : VpnService() {
 
         serviceJob?.cancel()
         connection?.stop()
-        cleanup()
+        cleanup(preserveError = false)
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
-    private fun cleanup() {
+    private fun cleanup(preserveError: Boolean) {
         connection?.cleanup()
         connection = null
 
@@ -192,7 +197,9 @@ class TwochaVpnService : VpnService() {
         vpnInterface = null
 
         isRunning = false
-        _connectionState.value = ConnectionState.DISCONNECTED
+        if (!preserveError || _connectionState.value != ConnectionState.ERROR) {
+            _connectionState.value = ConnectionState.DISCONNECTED
+        }
         _stats.value = VpnStats()
 
         Log.d(TAG, "VPN cleaned up")
