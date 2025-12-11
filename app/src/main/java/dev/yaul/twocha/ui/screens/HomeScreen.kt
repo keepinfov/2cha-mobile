@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FileCopy
@@ -139,12 +142,18 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
                 .animateContentSize()
                 .padding(paddingValues)
                 .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
-            HomeHeader(onNavigateToSettings = onNavigateToSettings)
+            TopActions(
+                onOpenConfig = onNavigateToConfig,
+                onOpenSettings = onNavigateToSettings
+            )
+
+            HomeHeader()
 
             ShieldConnectButton(
                 state = connectionState,
@@ -165,7 +174,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeader(onNavigateToSettings: () -> Unit) {
+private fun HomeHeader() {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
@@ -197,14 +206,45 @@ private fun HomeHeader(onNavigateToSettings: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
             }
+        }
+    }
+}
 
-            IconButton(onClick = onNavigateToSettings) {
-                Icon(
-                    imageVector = Icons.Rounded.Settings,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+@Composable
+private fun TopActions(
+    onOpenConfig: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FilledTonalButton(
+            onClick = onOpenConfig,
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Icon(Icons.Rounded.Download, contentDescription = null)
+            Text(
+                text = stringResource(R.string.home_action_manual),
+                modifier = Modifier.padding(start = Spacing.xs)
+            )
+        }
+
+        IconButton(
+            onClick = onOpenSettings,
+            modifier = Modifier
+                .size(44.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = CircleShape
                 )
-            }
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Settings,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
         }
     }
 }
