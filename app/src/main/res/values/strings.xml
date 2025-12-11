@@ -34,6 +34,7 @@
     <string name="home_cipher_fallback">Cipher CHACHA20-POLY1305</string>
     <string name="home_tun_label">Interface %1$s</string>
     <string name="home_mtu_label">MTU %1$d</string>
+    <string name="home_transport_udp">Proto UDP</string>
     <string name="home_version_label">App v%1$s</string>
     <string name="home_overview_title">Connection overview</string>
     <string name="home_overview_subtitle">Everything about your tunnel at a glance</string>
