@@ -3,6 +3,7 @@ package dev.yaul.twocha.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,7 +43,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,6 +74,7 @@ fun HomeScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -99,6 +103,7 @@ fun HomeScreen(
     }
 
     val handleToggle = {
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         if (connectionState == ConnectionState.DISCONNECTED) {
             val prepareIntent = viewModel.prepareVpn()
             if (prepareIntent != null) {
@@ -130,6 +135,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
+                .animateContentSize()
                 .padding(paddingValues)
                 .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg)
@@ -205,12 +211,17 @@ private fun QuickActions(
     onImport: () -> Unit,
     isConfigMissing: Boolean
 ) {
+    val haptics = LocalHapticFeedback.current
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
         FilledTonalButton(
-            onClick = onManualSetup,
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onManualSetup()
+            },
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(18.dp)
         ) {
@@ -222,7 +233,10 @@ private fun QuickActions(
         }
 
         OutlinedButton(
-            onClick = onImport,
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onImport()
+            },
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(18.dp),
             enabled = isConfigMissing

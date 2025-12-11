@@ -117,4 +117,5 @@
     <string name="crash_share_title">Share crash report</string>
     <string name="crash_share_subject">2cha crash report</string>
     <string name="crash_restart">Restart app</string>
+    <string name="settings_link_error">Unable to open link on this device</string>
 </resources>

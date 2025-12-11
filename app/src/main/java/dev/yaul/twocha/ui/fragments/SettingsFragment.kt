@@ -33,7 +33,7 @@ class SettingsFragment : Fragment() {
                 ) {
                     SettingsScreen(
                         viewModel = viewModel,
-                        onNavigateBack = { requireActivity().onBackPressedDispatcher.onBackPressed() }
+                        onNavigateBack = { parentFragmentManager.popBackStack() }
                     )
                 }
             }
