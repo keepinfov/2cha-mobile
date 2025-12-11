@@ -28,7 +28,7 @@ class SettingsFragment : Fragment() {
                 val settings = viewModel.settings.collectAsState()
 
                 TwochaTheme(
-                    darkTheme = settings.value.darkMode,
+                    themeStyle = settings.value.themeStyle,
                     dynamicColor = settings.value.dynamicColor
                 ) {
                     SettingsScreen(

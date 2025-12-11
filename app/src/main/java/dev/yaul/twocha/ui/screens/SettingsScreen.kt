@@ -52,6 +52,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -336,8 +337,9 @@ fun SettingsScreen(
     if (showThemeDialog) {
         ThemeSelectionDialog(
             onDismiss = { showThemeDialog = false },
-            onThemeSelected = { _ ->
-                // Theme would be applied via ViewModel
+            onThemeSelected = { style ->
+                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                viewModel.setThemeStyle(style)
                 showThemeDialog = false
             }
         )
@@ -526,7 +528,9 @@ private fun SettingsGroupCard(
             }
 
             Spacer(modifier = Modifier.height(Spacing.sm))
-            content()
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                content()
+            }
         }
     }
 }
@@ -593,7 +597,16 @@ private fun SettingSwitchRow(
         subtitle = subtitle,
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Switch(checked = checked, onCheckedChange = onCheckedChange)
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onCheckedChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
             }
         },
         onClick = { onCheckedChange(!checked) }

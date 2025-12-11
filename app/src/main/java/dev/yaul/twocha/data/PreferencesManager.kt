@@ -5,6 +5,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.yaul.twocha.ui.theme.ThemeStyle
+import dev.yaul.twocha.ui.theme.isDark
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.firstOrNull
@@ -28,6 +30,7 @@ class PreferencesManager @Inject constructor(
         private val KEY_AUTO_CONNECT = booleanPreferencesKey("auto_connect")
         private val KEY_AUTO_RECONNECT = booleanPreferencesKey("auto_reconnect")
         private val KEY_LAST_SERVER = stringPreferencesKey("last_server")
+        private val KEY_THEME_STYLE = stringPreferencesKey("theme_style")
     }
 
     // Dark mode preference
@@ -46,6 +49,7 @@ class PreferencesManager @Inject constructor(
     suspend fun setDarkMode(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[KEY_DARK_MODE] = enabled
+            preferences[KEY_THEME_STYLE] = if (enabled) ThemeStyle.CYBER.name else ThemeStyle.LIGHT.name
         }
     }
 
@@ -65,6 +69,27 @@ class PreferencesManager @Inject constructor(
     suspend fun setDynamicColor(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[KEY_DYNAMIC_COLOR] = enabled
+        }
+    }
+
+    // Theme style preference
+    val themeStyle: Flow<ThemeStyle> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            val stored = preferences[KEY_THEME_STYLE]
+            stored?.let { runCatching { ThemeStyle.valueOf(it) }.getOrNull() } ?: ThemeStyle.CYBER
+        }
+
+    suspend fun setThemeStyle(style: ThemeStyle) {
+        dataStore.edit { preferences ->
+            preferences[KEY_THEME_STYLE] = style.name
+            preferences[KEY_DARK_MODE] = style.isDark()
         }
     }
 
