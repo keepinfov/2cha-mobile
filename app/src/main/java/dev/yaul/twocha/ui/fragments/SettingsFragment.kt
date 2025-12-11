@@ -25,11 +25,12 @@ class SettingsFragment : Fragment() {
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
-                val settings = viewModel.settings.collectAsState()
+                val themeStyle = viewModel.themeStyle.collectAsState()
+                val dynamicColor = viewModel.dynamicColor.collectAsState()
 
                 TwochaTheme(
-                    themeStyle = settings.value.themeStyle,
-                    dynamicColor = settings.value.dynamicColor
+                    themeStyle = themeStyle.value,
+                    dynamicColor = dynamicColor.value
                 ) {
                     SettingsScreen(
                         viewModel = viewModel,
