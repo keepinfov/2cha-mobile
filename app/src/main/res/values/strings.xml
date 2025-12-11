@@ -20,6 +20,11 @@
     <string name="btn_cancel">Cancel</string>
     <string name="btn_import">Import Config</string>
     <string name="btn_export">Export Config</string>
+    <string name="home_load_config">Load configuration</string>
+    <string name="home_config_ready">Configuration ready</string>
+    <string name="home_config_ready_subtitle">You can update it anytime</string>
+    <string name="home_config_missing">Configuration missing</string>
+    <string name="home_config_missing_subtitle">Load a config file to start</string>
 
     <!-- Stats -->
     <string name="stats_title">Statistics</string>

@@ -4,11 +4,15 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +45,122 @@ import kotlin.math.sin
  * - Pulsing glow effect for status indication
  * - Morphing button shape
  */
+@Composable
+fun ShieldConnectButton(
+    state: ConnectionState,
+    serverAddress: String?,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isConnected = state == ConnectionState.CONNECTED
+    val isConnecting = state == ConnectionState.CONNECTING || state == ConnectionState.DISCONNECTING
+
+    val statusColor by animateColorAsState(
+        targetValue = when (state) {
+            ConnectionState.CONNECTED -> StatusConnected
+            ConnectionState.CONNECTING, ConnectionState.DISCONNECTING -> StatusConnecting
+            ConnectionState.ERROR -> StatusError
+            else -> StatusDisconnected
+        },
+        animationSpec = spring(
+            dampingRatio = SpringPhysics.responsiveDamping,
+            stiffness = SpringPhysics.responsiveStiffness
+        ),
+        label = "shieldStatusColor"
+    )
+
+    val glowAlpha = rememberGlowAnimation(
+        enabled = isConnecting,
+        minAlpha = 0.2f,
+        maxAlpha = 0.6f,
+        durationMillis = 1000
+    )
+
+    val pulseScale = rememberPulseAnimation(
+        enabled = isConnected,
+        minScale = 1f,
+        maxScale = 1.03f,
+        durationMillis = 2000
+    )
+
+    val ringRotation = rememberRotationAnimation(
+        enabled = isConnecting,
+        durationMillis = 3000
+    )
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = Springs.responsive,
+        label = "shieldPressScale"
+    )
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .scale(pressScale)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = rememberRipple(bounded = true)
+            ) { onToggle() },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
+        shape = ComponentShapes.connectionCard
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.xl, vertical = Spacing.lg),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            ExpressiveStatusIndicator(
+                state = state,
+                statusColor = statusColor,
+                glowAlpha = glowAlpha,
+                pulseScale = pulseScale,
+                ringRotation = ringRotation
+            )
+
+            Spacer(modifier = Modifier.height(Spacing.md))
+
+            Text(
+                text = when (state) {
+                    ConnectionState.CONNECTED -> stringResource(R.string.state_connected)
+                    ConnectionState.CONNECTING -> stringResource(R.string.state_connecting)
+                    ConnectionState.DISCONNECTING -> stringResource(R.string.state_disconnecting)
+                    ConnectionState.ERROR -> stringResource(R.string.state_error)
+                    else -> stringResource(R.string.state_disconnected)
+                },
+                style = TextStyles.connectionStatus,
+                color = statusColor
+            )
+
+            if (serverAddress != null && (isConnected || isConnecting)) {
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Public,
+                        contentDescription = null,
+                        modifier = Modifier.size(IconSize.xs),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(Spacing.xxs))
+                    Text(
+                        text = serverAddress,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun ConnectionCard(
     state: ConnectionState,
