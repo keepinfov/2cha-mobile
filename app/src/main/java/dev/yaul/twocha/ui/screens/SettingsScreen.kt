@@ -8,35 +8,78 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.BatteryChargingFull
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.yaul.twocha.ui.theme.*
+import dev.yaul.twocha.ui.theme.IconSize
+import dev.yaul.twocha.ui.theme.Spacing
+import dev.yaul.twocha.ui.theme.ThemeStyle
+import dev.yaul.twocha.ui.theme.getColorPalette
+import dev.yaul.twocha.ui.theme.isDark
 import dev.yaul.twocha.viewmodel.VpnViewModel
 
 /**
- * Settings Screen - Material 3 Expressive Design
- *
- * Features:
- * - Theme selection with live preview
- * - Expressive animations
- * - Clean, organized sections
+ * Settings Screen - Reimagined Material 3 layout
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,229 +95,254 @@ fun SettingsScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
 
-    Scaffold { paddingValues ->
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onNavigateBack()
+                    }) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Settings", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            text = "Personalize your secure connection",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .animateContentSize()
-                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically
+            SettingsHero()
+
+            SettingsGroupCard(
+                title = "Appearance",
+                subtitle = "Dial in a look that matches your vibe"
             ) {
-                IconButton(onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onNavigateBack()
-                }) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
-                }
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface
+                SettingRow(
+                    icon = Icons.Rounded.Palette,
+                    title = "Theme presets",
+                    subtitle = "Try expressive palettes for 2cha",
+                    supporting = {
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                            ThemeStyle.entries.take(3).forEach { style ->
+                                ColorSwatch(getColorPalette(style).primary)
+                            }
+                        }
+                    },
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showThemeDialog = true
+                    }
                 )
-            }
 
-            // Appearance Section
-        SettingsSection(title = "Appearance") {
-            // Theme selector
-            SettingsItem(
-                icon = Icons.Rounded.Palette,
-                title = "App Theme",
-                subtitle = "Choose your preferred theme",
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    showThemeDialog = true
-                }
-            )
-
-            SettingsSwitch(
-                icon = Icons.Rounded.DarkMode,
-                title = "Dark Mode",
-                subtitle = "Use dark theme throughout the app",
-                checked = settings.darkMode,
-                onCheckedChange = {
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    viewModel.setDarkMode(it)
-                }
-            )
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                SettingsSwitch(
-                    icon = Icons.Rounded.AutoAwesome,
-                    title = "Dynamic Color",
-                    subtitle = "Use Material You dynamic colors",
-                    checked = settings.dynamicColor,
+                SettingSwitchRow(
+                    icon = Icons.Rounded.DarkMode,
+                    title = "Dark mode",
+                    subtitle = "Prefer deeper contrast across the app",
+                    checked = settings.darkMode,
                     onCheckedChange = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        viewModel.setDynamicColor(it)
+                        viewModel.setDarkMode(it)
+                    }
+                )
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    SettingSwitchRow(
+                        icon = Icons.Rounded.AutoAwesome,
+                        title = "Dynamic color",
+                        subtitle = "Match 2cha to your wallpaper colors",
+                        checked = settings.dynamicColor,
+                        onCheckedChange = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.setDynamicColor(it)
+                        }
+                    )
+                }
+            }
+
+            SettingsGroupCard(
+                title = "Connection",
+                subtitle = "Stay online with confidence"
+            ) {
+                SettingSwitchRow(
+                    icon = Icons.Rounded.Bolt,
+                    title = "Auto-connect",
+                    subtitle = "Start protection as soon as 2cha opens",
+                    checked = settings.autoConnect,
+                    onCheckedChange = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.setAutoConnect(it)
+                    }
+                )
+
+                SettingSwitchRow(
+                    icon = Icons.Rounded.NotificationsActive,
+                    title = "Connection alerts",
+                    subtitle = "Status updates while you browse",
+                    checked = settings.showNotifications,
+                    onCheckedChange = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.setShowNotifications(it)
+                    }
+                )
+
+                SettingSwitchRow(
+                    icon = Icons.Rounded.BatteryChargingFull,
+                    title = "Keep alive on battery saver",
+                    subtitle = "Maintain tunnels when power saving kicks in",
+                    checked = settings.keepAliveOnBattery,
+                    onCheckedChange = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.setKeepAliveOnBattery(it)
                     }
                 )
             }
-        }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xs))
-
-            // Connection Section
-            SettingsSection(title = "Connection") {
-            SettingsSwitch(
-                icon = Icons.Rounded.PlayArrow,
-                title = "Auto-Connect",
-                subtitle = "Connect automatically when app starts",
-                checked = settings.autoConnect,
-                onCheckedChange = {
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    viewModel.setAutoConnect(it)
-                }
-            )
-
-            SettingsSwitch(
-                icon = Icons.Rounded.Notifications,
-                title = "Show Notifications",
-                subtitle = "Show connection status notifications",
-                checked = settings.showNotifications,
-                onCheckedChange = {
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    viewModel.setShowNotifications(it)
-                }
-            )
-
-            SettingsSwitch(
-                icon = Icons.Rounded.BatteryChargingFull,
-                title = "Keep Alive on Battery",
-                subtitle = "Maintain connection even on battery saver",
-                checked = settings.keepAliveOnBattery,
-                onCheckedChange = {
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    viewModel.setKeepAliveOnBattery(it)
-                }
-            )
-        }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xs))
-
-            // Data Section
-            SettingsSection(title = "Data") {
-            SettingsItem(
-                icon = Icons.Rounded.FileUpload,
-                title = "Export Configuration",
-                subtitle = "Save configuration to file",
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    viewModel.exportConfig(context)
-                }
-            )
-
-            SettingsItem(
-                icon = Icons.Rounded.FileDownload,
-                title = "Import Configuration",
-                subtitle = "Load configuration from file",
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    viewModel.importConfig(context)
-                }
-            )
-
-            SettingsItem(
-                icon = Icons.Rounded.DeleteForever,
-                title = "Reset Configuration",
-                subtitle = "Reset all settings to defaults",
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    showResetDialog = true
-                },
-                tint = MaterialTheme.colorScheme.error
-            )
-        }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.xs))
-
-            // About Section
-            SettingsSection(title = "About") {
-            SettingsItem(
-                icon = Icons.Rounded.Info,
-                title = "About 2cha",
-                subtitle = "Version, licenses, and more",
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    showAboutDialog = true
-                }
-            )
-
-            SettingsItem(
-                icon = Icons.Rounded.Code,
-                title = "Source Code",
-                subtitle = "View on GitHub",
-                trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
-                onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        data = Uri.parse("https://github.com/keepinfov/2cha")
+            SettingsGroupCard(
+                title = "Data & backups",
+                subtitle = "Manage and safeguard your configuration"
+            ) {
+                SettingRow(
+                    icon = Icons.Rounded.FileUpload,
+                    title = "Export configuration",
+                    subtitle = "Save your setup as a portable file",
+                    trailing = {
+                        AssistChip(onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.exportConfig(context)
+                        }, label = { Text("Save") })
+                    },
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.exportConfig(context)
                     }
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    runCatching { context.startActivity(intent) }
-                        .onFailure {
-                            Toast.makeText(
-                                context,
-                                context.getString(dev.yaul.twocha.R.string.settings_link_error),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                }
-            )
+                )
 
-            SettingsItem(
-                icon = Icons.Rounded.BugReport,
-                title = "Report Issue",
-                subtitle = "Report bugs or request features",
-                trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
-                onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        data = Uri.parse("https://github.com/keepinfov/2cha/issues")
+                SettingRow(
+                    icon = Icons.Rounded.FileDownload,
+                    title = "Import configuration",
+                    subtitle = "Load settings from a saved file",
+                    trailing = {
+                        AssistChip(onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            viewModel.importConfig(context)
+                        }, label = { Text("Browse") })
+                    },
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        viewModel.importConfig(context)
                     }
-                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    runCatching { context.startActivity(intent) }
-                        .onFailure {
-                            Toast.makeText(
-                                context,
-                                context.getString(dev.yaul.twocha.R.string.settings_link_error),
-                                Toast.LENGTH_SHORT
-                            ).show()
+                )
+
+                SettingRow(
+                    icon = Icons.Rounded.DeleteForever,
+                    title = "Reset configuration",
+                    subtitle = "Start fresh with default preferences",
+                    iconTint = MaterialTheme.colorScheme.error,
+                    titleColor = MaterialTheme.colorScheme.error,
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showResetDialog = true
+                    }
+                )
+            }
+
+            SettingsGroupCard(
+                title = "About",
+                subtitle = "Transparency and ways to reach us"
+            ) {
+                SettingRow(
+                    icon = Icons.Rounded.Info,
+                    title = "About 2cha",
+                    subtitle = "Version notes, licenses, and tech",
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        showAboutDialog = true
+                    }
+                )
+
+                SettingRow(
+                    icon = Icons.Rounded.Code,
+                    title = "Source code",
+                    subtitle = "Inspect the project on GitHub",
+                    trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("https://github.com/keepinfov/2cha")
                         }
-                }
-            )
-        }
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        runCatching { context.startActivity(intent) }
+                            .onFailure {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    }
+                )
 
-            Spacer(modifier = Modifier.height(Spacing.xl))
+                SettingRow(
+                    icon = Icons.Rounded.BugReport,
+                    title = "Report an issue",
+                    subtitle = "Tell us about bugs or feature ideas",
+                    trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("https://github.com/keepinfov/2cha/issues")
+                        }
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        runCatching { context.startActivity(intent) }
+                            .onFailure {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    }
+                )
+            }
 
-            // Version info at bottom
+            Spacer(modifier = Modifier.height(Spacing.lg))
+
             Text(
                 text = "2cha VPN v0.6.3 • Protocol v3",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(Spacing.md)
                     .wrapContentWidth(Alignment.CenterHorizontally)
+                    .padding(bottom = Spacing.lg)
             )
         }
     }
 
-    // Theme Selection Dialog
     if (showThemeDialog) {
         ThemeSelectionDialog(
             onDismiss = { showThemeDialog = false },
-            onThemeSelected = { style ->
+            onThemeSelected = { _ ->
                 // Theme would be applied via ViewModel
                 showThemeDialog = false
             }
         )
     }
 
-    // About Dialog
     if (showAboutDialog) {
         AlertDialog(
             onDismissRequest = { showAboutDialog = false },
@@ -313,13 +381,12 @@ fun SettingsScreen(
         )
     }
 
-    // Reset Confirmation Dialog
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
             icon = {
                 Icon(
-                    Icons.Rounded.Warning,
+                    Icons.Rounded.DeleteForever,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.error
                 )
@@ -352,13 +419,195 @@ fun SettingsScreen(
 }
 
 @Composable
+private fun SettingsHero() {
+    val gradient = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+        )
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = Spacing.md),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .background(gradient)
+                .padding(Spacing.lg)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Shield,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(IconSize.lg)
+                            .clip(CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(Spacing.sm))
+                    Text(
+                        text = "You're protected",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                    )
+                }
+
+                Text(
+                    text = "Tune how 2cha looks, behaves, and keeps your tunnels healthy.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    SettingsBadge(text = "Secure", color = MaterialTheme.colorScheme.primary)
+                    SettingsBadge(text = "Optimized", color = MaterialTheme.colorScheme.secondary)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsBadge(text: String, color: Color) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = color.copy(alpha = 0.15f),
+        modifier = Modifier.border(
+            width = 1.dp,
+            color = color.copy(alpha = 0.4f),
+            shape = RoundedCornerShape(50)
+        )
+    ) {
+        Text(
+            text = text,
+            color = color,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+        )
+    }
+}
+
+@Composable
+private fun SettingsGroupCard(
+    title: String,
+    subtitle: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Spacing.xs),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(Spacing.md)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    Text(title, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(Spacing.sm))
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SettingRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    titleColor: Color = MaterialTheme.colorScheme.onSurface,
+    trailingIcon: ImageVector? = null,
+    supporting: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: () -> Unit
+) {
+    ListItem(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        headlineContent = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, color = titleColor, style = MaterialTheme.typography.titleSmall)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                supporting?.invoke()
+            }
+        },
+        leadingContent = {
+            Surface(
+                modifier = Modifier.size(42.dp),
+                shape = CircleShape,
+                color = iconTint.copy(alpha = 0.12f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = iconTint)
+                }
+            }
+        },
+        trailingContent = trailing ?: trailingIcon?.let {
+            {
+                Icon(
+                    it,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(IconSize.md)
+                )
+            }
+        }
+    )
+}
+
+@Composable
+private fun SettingSwitchRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    SettingRow(
+        icon = icon,
+        title = title,
+        subtitle = subtitle,
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = checked, onCheckedChange = onCheckedChange)
+            }
+        },
+        onClick = { onCheckedChange(!checked) }
+    )
+}
+
+@Composable
 private fun ThemeSelectionDialog(
     onDismiss: () -> Unit,
     onThemeSelected: (ThemeStyle) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose Theme") },
+        title = { Text("Choose theme style") },
         text = {
             Column(
                 modifier = Modifier.animateContentSize(),
@@ -374,7 +623,7 @@ private fun ThemeSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Close")
             }
         }
     )
@@ -388,33 +637,45 @@ private fun ThemeOptionRow(
     val palette = getColorPalette(style)
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(ComponentShapes.cardSmall)
-            .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest
+        onClick = onClick,
+        shape = RoundedCornerShape(14.dp),
+        tonalElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(Spacing.sm),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(Spacing.md)
+                .animateContentSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
-            // Color swatches
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
-                ColorSwatch(palette.primary)
-                ColorSwatch(palette.secondary)
-                ColorSwatch(palette.tertiary)
-                ColorSwatch(palette.background)
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(palette.primary)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    ColorSwatch(palette.secondary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        ColorSwatch(palette.surface)
+                        ColorSwatch(palette.accent)
+                    }
+                }
             }
 
-            Spacer(modifier = Modifier.width(Spacing.md))
-
-            // Theme name
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
-                    text = style.name.lowercase().replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.bodyLarge
+                    text = style.name.lowercase().replaceFirstChar { it.titlecase() },
+                    style = MaterialTheme.typography.titleSmall
                 )
                 Text(
                     text = if (style.isDark()) "Dark theme" else "Light theme",
@@ -438,83 +699,6 @@ private fun ColorSwatch(color: Color) {
                 color = Color.White.copy(alpha = 0.2f),
                 shape = CircleShape
             )
-    )
-}
-
-@Composable
-private fun SettingsSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs)
-        )
-        content()
-    }
-}
-
-@Composable
-private fun SettingsItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    trailingIcon: ImageVector? = null,
-    tint: Color = MaterialTheme.colorScheme.onSurface
-) {
-    ListItem(
-        headlineContent = {
-            Text(title, color = tint)
-        },
-        supportingContent = {
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        },
-        leadingContent = {
-            Icon(icon, contentDescription = null, tint = tint)
-        },
-        trailingContent = trailingIcon?.let {
-            {
-                Icon(
-                    it,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(IconSize.sm)
-                )
-            }
-        },
-        modifier = Modifier.clickable(onClick = onClick)
-    )
-}
-
-@Composable
-private fun SettingsSwitch(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    ListItem(
-        headlineContent = { Text(title) },
-        supportingContent = {
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        },
-        leadingContent = {
-            Icon(icon, contentDescription = null)
-        },
-        trailingContent = {
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange
-            )
-        },
-        modifier = Modifier.clickable { onCheckedChange(!checked) }
     )
 }
 
