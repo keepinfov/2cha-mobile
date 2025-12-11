@@ -1,6 +1,7 @@
 package dev.yaul.twocha.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -100,7 +101,14 @@ fun ShieldConnectButton(
         modifier = modifier
             .fillMaxWidth()
             .scale(pressScale)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = SpringPhysics.gentleDamping,
+                    stiffness = SpringPhysics.gentleStiffness
+                )
+            )
             .clickable(
+                enabled = !isConnecting,
                 interactionSource = interactionSource,
                 indication = ripple(bounded = true)
             ) { onToggle() },

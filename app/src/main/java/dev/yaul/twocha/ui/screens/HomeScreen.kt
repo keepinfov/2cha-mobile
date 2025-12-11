@@ -102,17 +102,24 @@ fun HomeScreen(
         }
     }
 
-    val handleToggle = {
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-        if (connectionState == ConnectionState.DISCONNECTED) {
-            val prepareIntent = viewModel.prepareVpn()
-            if (prepareIntent != null) {
-                vpnPermissionLauncher.launch(prepareIntent)
-            } else {
-                viewModel.connect()
+    val handleToggle: () -> Unit = {
+        when (connectionState) {
+            ConnectionState.DISCONNECTED, ConnectionState.ERROR -> {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                val prepareIntent = viewModel.prepareVpn()
+                if (prepareIntent != null) {
+                    vpnPermissionLauncher.launch(prepareIntent)
+                } else {
+                    viewModel.connect()
+                }
             }
-        } else {
-            viewModel.disconnect()
+            ConnectionState.CONNECTED -> {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.disconnect()
+            }
+            ConnectionState.CONNECTING, ConnectionState.DISCONNECTING -> {
+                // Ignore rapid taps while a transition is in progress
+            }
         }
     }
 
