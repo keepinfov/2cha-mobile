@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import dagger.hilt.android.HiltAndroidApp
+import dev.yaul.twocha.crash.CrashReporter
 
 @HiltAndroidApp
 class TwochaApplication : Application() {
@@ -16,6 +17,7 @@ class TwochaApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashReporter.install(this)
         createNotificationChannel()
     }
 
