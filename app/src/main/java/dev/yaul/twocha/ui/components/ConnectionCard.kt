@@ -102,7 +102,7 @@ fun ShieldConnectButton(
             .scale(pressScale)
             .clickable(
                 interactionSource = interactionSource,
-                indication = rememberRipple(bounded = true)
+                indication = ripple(bounded = true)
             ) { onToggle() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh

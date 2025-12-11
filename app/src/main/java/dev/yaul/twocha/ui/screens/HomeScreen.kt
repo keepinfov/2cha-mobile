@@ -35,7 +35,9 @@ import dev.yaul.twocha.vpn.ConnectionState
 @Composable
 fun HomeScreen(
     viewModel: VpnViewModel,
-    onNavigateToConfig: () -> Unit
+    onNavigateToConfig: () -> Unit,
+    onNavigateToSettings: () -> Unit?,
+    onNavigateToLogs: () -> Unit?
 ) {
     val connectionState by viewModel.connectionState.collectAsState()
     val config by viewModel.config.collectAsState()
