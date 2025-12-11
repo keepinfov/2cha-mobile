@@ -7,8 +7,12 @@ import android.view.ViewGroup
 import androidx.activity.addCallback
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.ViewTreeLifecycleOwner
+import androidx.lifecycle.ViewTreeViewModelStoreOwner
+import androidx.savedstate.ViewTreeSavedStateRegistryOwner
 import dagger.hilt.android.AndroidEntryPoint
 import dev.yaul.twocha.ui.screens.ConfigScreen
 import dev.yaul.twocha.ui.theme.TwochaTheme
@@ -32,6 +36,12 @@ class ConfigFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         return ComposeView(requireContext()).apply {
+            setViewCompositionStrategy(
+                ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed(viewLifecycleOwner)
+            )
+            ViewTreeLifecycleOwner.set(this, viewLifecycleOwner)
+            ViewTreeViewModelStoreOwner.set(this, viewModelStoreOwner)
+            ViewTreeSavedStateRegistryOwner.set(this, viewLifecycleOwner)
             setContent {
                 val themeStyle = viewModel.themeStyle.collectAsState()
                 val dynamicColor = viewModel.dynamicColor.collectAsState()
