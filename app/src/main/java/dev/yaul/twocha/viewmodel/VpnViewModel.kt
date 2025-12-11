@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.yaul.twocha.config.ConfigParser
 import dev.yaul.twocha.config.VpnConfig
 import dev.yaul.twocha.data.PreferencesManager
+import dev.yaul.twocha.ui.theme.ThemeStyle
 import dev.yaul.twocha.vpn.ConnectionState
 import dev.yaul.twocha.vpn.TwochaVpnService
 import dev.yaul.twocha.vpn.VpnStats
@@ -64,6 +65,9 @@ class VpnViewModel @Inject constructor(
     val dynamicColor: StateFlow<Boolean> = preferencesManager.dynamicColor
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    val themeStyle: StateFlow<ThemeStyle> = preferencesManager.themeStyle
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ThemeStyle.CYBER)
+
     val autoConnect: StateFlow<Boolean> = preferencesManager.autoConnect
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
@@ -74,13 +78,15 @@ class VpnViewModel @Inject constructor(
     val settings: StateFlow<Settings> = combine(
         darkMode,
         dynamicColor,
+        themeStyle,
         autoConnect,
         _showNotifications,
         _keepAliveOnBattery
-    ) { darkMode, dynamicColor, autoConnect, showNotifications, keepAliveOnBattery ->
+    ) { darkMode, dynamicColor, themeStyle, autoConnect, showNotifications, keepAliveOnBattery ->
         Settings(
             darkMode = darkMode,
             dynamicColor = dynamicColor,
+            themeStyle = themeStyle,
             autoConnect = autoConnect,
             showNotifications = showNotifications,
             keepAliveOnBattery = keepAliveOnBattery
@@ -325,6 +331,15 @@ class VpnViewModel @Inject constructor(
     }
 
     /**
+     * Update selected theme style
+     */
+    fun setThemeStyle(style: ThemeStyle) {
+        viewModelScope.launch {
+            preferencesManager.setThemeStyle(style)
+        }
+    }
+
+    /**
      * Update auto-connect setting
      */
     fun setAutoConnect(enabled: Boolean) {
@@ -388,6 +403,7 @@ class VpnViewModel @Inject constructor(
 data class Settings(
     val darkMode: Boolean = true,
     val dynamicColor: Boolean = false,
+    val themeStyle: ThemeStyle = ThemeStyle.CYBER,
     val autoConnect: Boolean = false,
     val showNotifications: Boolean = true,
     val keepAliveOnBattery: Boolean = true
