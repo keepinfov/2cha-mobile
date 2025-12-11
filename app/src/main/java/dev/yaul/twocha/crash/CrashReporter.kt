@@ -14,6 +14,7 @@ object CrashReporter : Thread.UncaughtExceptionHandler {
     private const val TAG = "CrashReporter"
     private const val PREFS_NAME = "crash_reports"
     private const val KEY_LAST_CRASH = "last_crash"
+    private const val MAX_REPORT_LENGTH = 500_000 // Keep intent extras well below binder limits
 
     private lateinit var application: Application
     private var defaultHandler: Thread.UncaughtExceptionHandler? = null
@@ -54,13 +55,13 @@ object CrashReporter : Thread.UncaughtExceptionHandler {
 
     private fun persistReport(report: String) {
         val prefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_LAST_CRASH, report).apply()
+        prefs.edit().putString(KEY_LAST_CRASH, report.truncated()).apply()
     }
 
     private fun launchCrashScreen(report: String) {
         val intent = Intent(application, CrashReportActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra(CrashReportActivity.EXTRA_CRASH_REPORT, report)
+            putExtra(CrashReportActivity.EXTRA_CRASH_REPORT, report.truncated())
         }
         runCatching { application.startActivity(intent) }
     }
@@ -97,6 +98,16 @@ object CrashReporter : Thread.UncaughtExceptionHandler {
             appendLine("Message: ${throwable.message}")
             appendLine()
             appendLine(stackTrace)
+        }
+    }
+
+    private fun String.truncated(): String {
+        if (length <= MAX_REPORT_LENGTH) return this
+        val truncatedBody = substring(0, MAX_REPORT_LENGTH)
+        return buildString(MAX_REPORT_LENGTH + 64) {
+            append(truncatedBody)
+            appendLine()
+            appendLine("… (truncated crash report)")
         }
     }
 }

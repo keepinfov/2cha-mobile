@@ -34,9 +34,7 @@ class HomeFragment : Fragment() {
                 ) {
                     HomeScreen(
                         viewModel = viewModel,
-                        onNavigateToConfig = { (activity as? MainActivity)?.openConfig() },
-                        onNavigateToSettings = { (activity as? MainActivity)?.openSettings() },
-                        onNavigateToLogs = { (activity as? MainActivity)?.openLogs() }
+                        onNavigateToConfig = { (activity as? MainActivity)?.openConfig() }
                     )
                 }
             }

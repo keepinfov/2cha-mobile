@@ -1,7 +1,10 @@
 package dev.yaul.twocha.ui.theme
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
+import android.view.View
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -18,10 +21,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 /**
  * Material 3 Expressive Theme System
@@ -199,6 +202,7 @@ fun TwochaTheme(
 ) {
     val context = LocalContext.current
     val isDark = themeStyle.isDark()
+    val systemUiController = rememberSystemUiController()
 
     // Get color scheme
     val colorScheme = when {
@@ -225,17 +229,15 @@ fun TwochaTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
+            val window = view.findActivity()?.window ?: return@SideEffect
+            WindowCompat.setDecorFitsSystemWindows(window, false)
 
-            // Transparent system bars for edge-to-edge
-            window.statusBarColor = Color.Transparent.toArgb()
-            window.navigationBarColor = Color.Transparent.toArgb()
-
-            // Set icon colors based on theme
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !isDark
-                isAppearanceLightNavigationBars = !isDark
-            }
+            // Configure system bars without deprecated APIs
+            systemUiController.setSystemBarsColor(
+                color = Color.Transparent,
+                darkIcons = !isDark,
+                isNavigationBarContrastEnforced = false
+            )
         }
     }
 
@@ -335,6 +337,14 @@ fun PreviewAllThemes(
             content()
         }
     }
+}
+
+private fun View.findActivity(): Activity? = context.findActivity()
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 /**
