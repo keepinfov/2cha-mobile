@@ -7,6 +7,9 @@ import android.view.ViewGroup
 import androidx.activity.addCallback
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.lifecycle.ViewTreeLifecycleOwner
+import androidx.savedstate.ViewTreeSavedStateRegistryOwner
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import dagger.hilt.android.AndroidEntryPoint
@@ -32,6 +35,9 @@ class ConfigFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         return ComposeView(requireContext()).apply {
+            ViewTreeLifecycleOwner.set(this, viewLifecycleOwner)
+            ViewTreeSavedStateRegistryOwner.set(this, viewLifecycleOwner)
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 val themeStyle = viewModel.themeStyle.collectAsState()
                 val dynamicColor = viewModel.dynamicColor.collectAsState()
