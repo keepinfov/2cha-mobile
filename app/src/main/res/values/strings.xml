@@ -25,6 +25,17 @@
     <string name="home_config_ready_subtitle">You can update it anytime</string>
     <string name="home_config_missing">Configuration missing</string>
     <string name="home_config_missing_subtitle">Load a config file to start</string>
+    <string name="home_title">Private shield</string>
+    <string name="home_subtitle">Flowing, rounded controls that keep your tunnel calm</string>
+    <string name="home_protocol_version_label">Protocol v%1$d</string>
+    <string name="home_cipher_label">Cipher %1$s</string>
+    <string name="home_tun_label">Interface %1$s</string>
+    <string name="home_mtu_label">MTU %1$d</string>
+    <string name="home_overview_title">Connection overview</string>
+    <string name="home_overview_subtitle">Everything about your tunnel at a glance</string>
+    <string name="home_protocol_label">Protocol</string>
+    <string name="home_protocol_value">Version %1$d</string>
+    <string name="home_config_status_label">Profile</string>
 
     <!-- Stats -->
     <string name="stats_title">Statistics</string>
