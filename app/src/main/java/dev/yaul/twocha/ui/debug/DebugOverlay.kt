@@ -20,7 +20,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.IntOffset
@@ -132,7 +131,8 @@ private fun DebugPanel(onDismiss: () -> Unit) {
             )
 
             // Tabs
-            TabRow(selectedTabIndex = selectedTab) {
+            // FIXME: Deprecated use
+            TabRow (selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
@@ -245,9 +245,9 @@ private fun ThemeSwitcherTab() {
         ThemeStyle.entries.forEach { style ->
             ThemeOption(
                 style = style,
-                isSelected = false, // Would need actual state management
+                isSelected = false, // TODO: Would need actual state management
                 onSelect = {
-                    // Would need to update theme state
+                    // TODO: Would need to update theme state
                 }
             )
         }

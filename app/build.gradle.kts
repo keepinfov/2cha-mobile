@@ -9,13 +9,16 @@ plugins {
 
 android {
     namespace = "dev.yaul.twocha"
-    compileSdk = 36
+    compileSdk {
+        version = release(36)
+    }
 
     defaultConfig {
         applicationId = "dev.yaul.twocha"
-        minSdk = 26
-        versionCode = 3
-        versionName = "0.1.1"
+        minSdk = 28
+        targetSdk = 36
+        versionCode = 2
+        versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

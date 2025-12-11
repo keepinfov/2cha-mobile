@@ -28,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -40,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import dev.yaul.twocha.crash.CrashReporter
 import dev.yaul.twocha.ui.theme.TwochaTheme
 import kotlin.system.exitProcess
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.res.stringResource
 
 class CrashReportActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,7 +54,7 @@ class CrashReportActivity : ComponentActivity() {
             ?: getString(R.string.crash_dialog_missing)
 
         setContent {
-            TwochaTheme {
+            TwochaTheme (darkTheme = isSystemInDarkTheme()) {
                 CrashReportScreen(
                     report = crashReport,
                     onCopy = { copyToClipboard(crashReport) },
@@ -91,7 +94,7 @@ class CrashReportActivity : ComponentActivity() {
         const val EXTRA_CRASH_REPORT = "extra_crash_report"
     }
 }
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CrashReportScreen(
     report: String,
@@ -109,12 +112,12 @@ private fun CrashReportScreen(
                 title = {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = context.getString(R.string.crash_screen_title),
+                            text = stringResource(R.string.crash_screen_title),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = context.getString(R.string.crash_screen_subtitle),
+                            text = stringResource(R.string.crash_screen_subtitle),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -143,7 +146,7 @@ private fun CrashReportScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = context.getString(R.string.crash_screen_description),
+                    text = stringResource(R.string.crash_screen_description),
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -165,19 +168,19 @@ private fun CrashReportScreen(
                 FilledTonalButton(onClick = onCopy, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Rounded.ContentCopy, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = context.getString(R.string.crash_copy))
+                    Text(text = stringResource(R.string.crash_copy))
                 }
 
                 FilledTonalButton(onClick = onShare, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Rounded.BugReport, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = context.getString(R.string.crash_share))
+                    Text(text = stringResource(R.string.crash_share))
                 }
 
                 FilledTonalButton(onClick = onRestart, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Rounded.RestartAlt, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = context.getString(R.string.crash_restart))
+                    Text(text = stringResource(R.string.crash_restart))
                 }
             }
         }

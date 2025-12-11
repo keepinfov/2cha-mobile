@@ -10,7 +10,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21" apply false
 
     // 3. Matching KSP for Kotlin 2.2.21 (Critical)
-    id("com.google.devtools.ksp") version "2.2.21-1.0.27" apply false
+    id("com.google.devtools.ksp") version "2.2.21-2.0.4" apply false
 
     // 4. Hilt (Standard version)
     id("com.google.dagger.hilt.android") version "2.57.2" apply false
