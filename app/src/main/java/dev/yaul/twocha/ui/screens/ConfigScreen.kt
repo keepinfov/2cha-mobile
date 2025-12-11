@@ -1,23 +1,82 @@
 package dev.yaul.twocha.ui.screens
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.AltRoute
+import androidx.compose.material.icons.rounded.CloudDone
+import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material.icons.rounded.SettingsEthernet
+import androidx.compose.material.icons.rounded.SettingsInputHdmi
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.yaul.twocha.config.CipherSuite
 import dev.yaul.twocha.config.VpnConfig
+import dev.yaul.twocha.ui.theme.IconSize
+import dev.yaul.twocha.ui.theme.Spacing
 import dev.yaul.twocha.viewmodel.VpnViewModel
 import dev.yaul.twocha.vpn.ConnectionState
 
@@ -47,336 +106,246 @@ fun ConfigScreen(
     var showAdvanced by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
 
-    Scaffold { paddingValues ->
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Configuration", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            text = "Craft your perfect tunnel setup",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showSaveDialog = true }, enabled = !isConnected) {
+                        Icon(Icons.Rounded.Save, contentDescription = "Save configuration")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(paddingValues)
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Text(
-                    text = "Configuration",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(
-                    onClick = { showSaveDialog = true },
-                    enabled = !isConnected
-                ) {
-                    Icon(Icons.Filled.Save, contentDescription = "Save")
-                }
-            }
+            ConfigHero(connectionState = connectionState)
 
-            // Warning if connected
             if (isConnected) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Filled.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Text(
-                            "Disconnect VPN to edit configuration",
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
+                ConfigWarning()
             }
 
-            // Server Section
-            ConfigSection(title = "Server") {
-                OutlinedTextField(
+            ConfigGroupCard(
+                title = "Server & keys",
+                subtitle = "Secure handshake details"
+            ) {
+                ConfigTextField(
                     value = serverAddress,
                     onValueChange = { serverAddress = it },
-                    label = { Text("Server Address") },
-                    placeholder = { Text("vpn.example.com:51820") },
-                    leadingIcon = { Icon(Icons.Filled.Dns, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isConnected,
-                    singleLine = true
+                    label = "Server address",
+                    placeholder = "vpn.example.com:51820",
+                    leadingIcon = { Icon(Icons.Rounded.Shield, contentDescription = null) },
+                    enabled = !isConnected
                 )
-            }
 
-            // Encryption Section
-            ConfigSection(title = "Encryption") {
-                // Cipher Selection
-                var cipherExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = cipherExpanded,
-                    onExpandedChange = { if (!isConnected) cipherExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = when (selectedCipher) {
-                            CipherSuite.CHACHA20_POLY1305 -> "ChaCha20-Poly1305"
-                            CipherSuite.AES_256_GCM -> "AES-256-GCM"
-                        },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Cipher") },
-                        leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = cipherExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        enabled = !isConnected
-                    )
-                    ExposedDropdownMenu(
-                        expanded = cipherExpanded,
-                        onDismissRequest = { cipherExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("ChaCha20-Poly1305 (Recommended)") },
-                            onClick = {
-                                selectedCipher = CipherSuite.CHACHA20_POLY1305
-                                cipherExpanded = false
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("AES-256-GCM") },
-                            onClick = {
-                                selectedCipher = CipherSuite.AES_256_GCM
-                                cipherExpanded = false
-                            }
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(Spacing.xs))
 
-                Spacer(modifier = Modifier.height(8.dp))
+                CipherDropdown(
+                    selectedCipher = selectedCipher,
+                    onCipherSelected = { selectedCipher = it },
+                    enabled = !isConnected
+                )
 
-                // Encryption Key
-                OutlinedTextField(
+                Spacer(modifier = Modifier.height(Spacing.xs))
+
+                ConfigTextField(
                     value = encryptionKey,
                     onValueChange = { encryptionKey = it },
-                    label = { Text("Encryption Key") },
-                    placeholder = { Text("64 hex characters") },
-                    leadingIcon = { Icon(Icons.Filled.Key, contentDescription = null) },
+                    label = "Encryption key",
+                    placeholder = "64 hex characters",
+                    leadingIcon = { Icon(Icons.Rounded.Key, contentDescription = null) },
                     trailingIcon = {
                         IconButton(onClick = { showKeyField = !showKeyField }) {
                             Icon(
-                                if (showKeyField) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                imageVector = if (showKeyField) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
                                 contentDescription = if (showKeyField) "Hide" else "Show"
                             )
                         }
                     },
                     visualTransformation = if (showKeyField) VisualTransformation.None else PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isConnected,
-                    singleLine = true,
-                    supportingText = {
-                        Text("${encryptionKey.length}/64 characters")
-                    },
-                    isError = encryptionKey.isNotEmpty() && encryptionKey.length != 64
+                    supportingText = "${encryptionKey.length}/64 characters",
+                    isError = encryptionKey.isNotEmpty() && encryptionKey.length != 64,
+                    enabled = !isConnected
                 )
             }
 
-            // IPv4 Section
-            ConfigSection(title = "IPv4") {
-                OutlinedTextField(
+            ConfigGroupCard(
+                title = "IPv4",
+                subtitle = "Route everyday traffic"
+            ) {
+                ConfigTextField(
                     value = ipv4Address,
                     onValueChange = { ipv4Address = it },
-                    label = { Text("IP Address") },
-                    leadingIcon = { Icon(Icons.Filled.Computer, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isConnected,
-                    singleLine = true
+                    label = "IP address",
+                    leadingIcon = { Icon(Icons.Rounded.SettingsEthernet, contentDescription = null) },
+                    enabled = !isConnected
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
 
-                OutlinedTextField(
+                ConfigTextField(
                     value = ipv4Prefix,
-                    onValueChange = { ipv4Prefix = it.filter { c -> c.isDigit() } },
-                    label = { Text("Prefix Length") },
-                    placeholder = { Text("24") },
+                    onValueChange = { ipv4Prefix = it.filter(Char::isDigit) },
+                    label = "Prefix length",
+                    placeholder = "24",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isConnected,
-                    singleLine = true
+                    leadingIcon = { Icon(Icons.Rounded.SettingsInputHdmi, contentDescription = null) },
+                    enabled = !isConnected
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Spacing.xs))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            "Route All Traffic",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            "Send all IPv4 traffic through VPN",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = ipv4RouteAll,
-                        onCheckedChange = { ipv4RouteAll = it },
-                        enabled = !isConnected
-                    )
-                }
+                ConfigSwitchRow(
+                    title = "Route all traffic",
+                    subtitle = "Send every IPv4 packet through 2cha",
+                    checked = ipv4RouteAll,
+                    onCheckedChange = { ipv4RouteAll = it },
+                    enabled = !isConnected,
+                    icon = Icons.Rounded.AltRoute
+                )
             }
 
-            // IPv6 Section
-            ConfigSection(title = "IPv6") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            "Enable IPv6",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            "Enable IPv6 dual-stack support",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = ipv6Enabled,
-                        onCheckedChange = { ipv6Enabled = it },
-                        enabled = !isConnected
-                    )
-                }
+            ConfigGroupCard(
+                title = "IPv6",
+                subtitle = "Dual-stack when you need it"
+            ) {
+                ConfigSwitchRow(
+                    title = "Enable IPv6",
+                    subtitle = "Add an IPv6 address for the tunnel",
+                    checked = ipv6Enabled,
+                    onCheckedChange = { ipv6Enabled = it },
+                    enabled = !isConnected,
+                    icon = Icons.Rounded.CloudDone
+                )
 
                 AnimatedVisibility(
                     visible = ipv6Enabled,
                     enter = expandVertically() + fadeIn(),
                     exit = shrinkVertically() + fadeOut()
                 ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        ConfigTextField(
                             value = ipv6Address,
                             onValueChange = { ipv6Address = it },
-                            label = { Text("IPv6 Address") },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isConnected,
-                            singleLine = true
+                            label = "IPv6 address",
+                            leadingIcon = { Icon(Icons.Rounded.SettingsEthernet, contentDescription = null) },
+                            enabled = !isConnected
                         )
                     }
                 }
             }
 
-            // DNS Section
-            ConfigSection(title = "DNS") {
-                OutlinedTextField(
+            ConfigGroupCard(
+                title = "DNS",
+                subtitle = "Choose resolvers for your tunnel"
+            ) {
+                ConfigTextField(
                     value = dnsServers,
                     onValueChange = { dnsServers = it },
-                    label = { Text("DNS Servers") },
-                    placeholder = { Text("1.1.1.1, 8.8.8.8") },
-                    leadingIcon = { Icon(Icons.Filled.Dns, contentDescription = null) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isConnected,
-                    supportingText = { Text("Separate multiple servers with commas") }
+                    label = "DNS servers",
+                    placeholder = "1.1.1.1, 8.8.8.8",
+                    leadingIcon = { Icon(Icons.Rounded.Dns, contentDescription = null) },
+                    supportingText = "Separate multiple servers with commas",
+                    enabled = !isConnected
                 )
             }
 
-            // Advanced Section
-            Card(
-                onClick = { showAdvanced = !showAdvanced },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
+            ConfigGroupCard(
+                title = "Advanced",
+                subtitle = "Fine-tune performance"
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(vertical = Spacing.xs),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Advanced Settings",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Icon(
-                        if (showAdvanced) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = null
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Network tweaks", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Adjust MTU and keepalive for tricky networks",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    AssistChip(
+                        onClick = { showAdvanced = !showAdvanced },
+                        label = { Text(if (showAdvanced) "Hide" else "Show") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (showAdvanced) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                contentDescription = null
+                            )
+                        }
                     )
                 }
-            }
 
-            AnimatedVisibility(
-                visible = showAdvanced,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                AnimatedVisibility(
+                    visible = showAdvanced,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
                 ) {
-                    ConfigSection(title = "Network") {
-                        OutlinedTextField(
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        ConfigTextField(
                             value = mtu,
-                            onValueChange = { mtu = it.filter { c -> c.isDigit() } },
-                            label = { Text("MTU") },
-                            placeholder = { Text("1420") },
+                            onValueChange = { mtu = it.filter(Char::isDigit) },
+                            label = "MTU",
+                            placeholder = "1420",
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isConnected,
-                            singleLine = true,
-                            supportingText = { Text("Maximum Transmission Unit (1280-1500)") }
+                            leadingIcon = { Icon(Icons.Rounded.Memory, contentDescription = null) },
+                            supportingText = "Recommended: 1280 - 1500",
+                            enabled = !isConnected
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        OutlinedTextField(
+                        ConfigTextField(
                             value = keepalive,
-                            onValueChange = { keepalive = it.filter { c -> c.isDigit() } },
-                            label = { Text("Keepalive Interval") },
-                            placeholder = { Text("25") },
+                            onValueChange = { keepalive = it.filter(Char::isDigit) },
+                            label = "Keepalive interval",
+                            placeholder = "25",
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isConnected,
-                            singleLine = true,
-                            supportingText = { Text("Seconds between keepalive packets") }
+                            leadingIcon = { Icon(Icons.Rounded.SettingsInputHdmi, contentDescription = null) },
+                            supportingText = "Seconds between keepalive packets",
+                            enabled = !isConnected
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
         }
     }
 
-    // Save Confirmation Dialog
     if (showSaveDialog) {
         AlertDialog(
             onDismissRequest = { showSaveDialog = false },
-            icon = { Icon(Icons.Filled.Save, contentDescription = null) },
-            title = { Text("Save Configuration") },
+            icon = { Icon(Icons.Rounded.Save, contentDescription = null) },
+            title = { Text("Save configuration") },
             text = { Text("Save the current configuration? This will overwrite any existing settings.") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // Build and save config
                         val newConfig = VpnConfig(
                             client = dev.yaul.twocha.config.ClientSection(
                                 server = serverAddress
@@ -423,27 +392,298 @@ fun ConfigScreen(
 }
 
 @Composable
-private fun ConfigSection(
+private fun ConfigHero(connectionState: ConnectionState) {
+    val gradient = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f)
+        )
+    )
+
+    val isConnected = connectionState == ConnectionState.CONNECTED
+    val statusColor = if (isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+    val statusText = when (connectionState) {
+        ConnectionState.CONNECTED -> "Connected"
+        ConnectionState.CONNECTING -> "Connecting"
+        ConnectionState.DISCONNECTED -> "Ready to connect"
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .background(gradient)
+                .padding(Spacing.lg)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .background(statusColor.copy(alpha = 0.16f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Lock,
+                            contentDescription = null,
+                            tint = statusColor,
+                            modifier = Modifier.size(IconSize.lg)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(Spacing.sm))
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "Configuration",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    ConfigBadge(text = "Private", color = MaterialTheme.colorScheme.primary)
+                    ConfigBadge(text = "Curated", color = MaterialTheme.colorScheme.secondary)
+                }
+
+                Text(
+                    text = "Adjust keys, routes, and DNS with a layout inspired by Settings.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfigBadge(text: String, color: Color) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.12f)),
+        shape = RoundedCornerShape(50)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+        )
+    }
+}
+
+@Composable
+private fun ConfigWarning() {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        ListItem(
+            leadingContent = {
+                Icon(
+                    imageVector = Icons.Rounded.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+            },
+            headlineContent = {
+                Text(
+                    text = "Disconnect to edit",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            },
+            supportingContent = {
+                Text(
+                    text = "VPN must be disconnected before changes can be saved.",
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun ConfigGroupCard(
     title: String,
+    subtitle: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun ConfigTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    leadingIcon: (@Composable () -> Unit)? = null,
+    trailingIcon: (@Composable () -> Unit)? = null,
+    supportingText: String? = null,
+    isError: Boolean = false,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    enabled: Boolean = true
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(label) },
+            placeholder = placeholder?.let { { Text(it) } },
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon,
+            visualTransformation = visualTransformation,
+            keyboardOptions = keyboardOptions,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+            singleLine = true,
+            supportingText = supportingText?.let { { Text(it) } },
+            isError = isError
+        )
+    }
+}
+
+@Composable
+private fun ConfigSwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean,
+    icon: ImageVector
+) {
+    ListItem(
+        modifier = Modifier.fillMaxWidth(),
+        headlineContent = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        leadingContent = {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            }
+        },
+        trailingContent = {
+            Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CipherDropdown(
+    selectedCipher: CipherSuite,
+    onCipherSelected: (CipherSuite) -> Unit,
+    enabled: Boolean
+) {
+    var cipherExpanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = cipherExpanded,
+        onExpandedChange = { if (enabled) cipherExpanded = it }
+    ) {
+        OutlinedTextField(
+            value = when (selectedCipher) {
+                CipherSuite.CHACHA20_POLY1305 -> "ChaCha20-Poly1305"
+                CipherSuite.AES_256_GCM -> "AES-256-GCM"
+            },
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Cipher") },
+            leadingIcon = { Icon(Icons.Rounded.Lock, contentDescription = null) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = cipherExpanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .menuAnchor(),
+            enabled = enabled
+        )
+        ExposedDropdownMenu(
+            expanded = cipherExpanded,
+            onDismissRequest = { cipherExpanded = false }
         ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+            DropdownMenuItem(
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("ChaCha20-Poly1305")
+                        Text(
+                            "Fast and modern",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                trailingIcon = {
+                    if (selectedCipher == CipherSuite.CHACHA20_POLY1305) {
+                        Text("Recommended", color = MaterialTheme.colorScheme.primary)
+                    }
+                },
+                onClick = {
+                    onCipherSelected(CipherSuite.CHACHA20_POLY1305)
+                    cipherExpanded = false
+                }
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            content()
+
+            DropdownMenuItem(
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("AES-256-GCM")
+                        Text(
+                            "Hardware accelerated on many devices",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                onClick = {
+                    onCipherSelected(CipherSuite.AES_256_GCM)
+                    cipherExpanded = false
+                }
+            )
         }
     }
 }
