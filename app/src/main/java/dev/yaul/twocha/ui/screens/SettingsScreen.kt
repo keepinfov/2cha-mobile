@@ -558,7 +558,7 @@ private fun SettingRow(
         headlineContent = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(title, color = titleColor, style = MaterialTheme.typography.titleSmall)
-                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 supporting?.invoke()
             }
         },
