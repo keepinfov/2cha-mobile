@@ -5,13 +5,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.addCallback
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.lifecycle.ViewTreeLifecycleOwner
-import androidx.savedstate.ViewTreeSavedStateRegistryOwner
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.yaul.twocha.ui.screens.ConfigScreen
 import dev.yaul.twocha.ui.theme.TwochaTheme
@@ -33,24 +32,17 @@ class ConfigFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        return ComposeView(requireContext()).apply {
-            ViewTreeLifecycleOwner.set(this, viewLifecycleOwner)
-            ViewTreeSavedStateRegistryOwner.set(this, viewLifecycleOwner)
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                val themeStyle = viewModel.themeStyle.collectAsState()
-                val dynamicColor = viewModel.dynamicColor.collectAsState()
+    ): View = ComposeView(requireContext()).apply {
+        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+        setContent {
+            val themeStyle by viewModel.themeStyle.collectAsStateWithLifecycle()
+            val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
 
-                TwochaTheme(
-                    themeStyle = themeStyle.value,
-                    dynamicColor = dynamicColor.value
-                ) {
-                    ConfigScreen(
-                        viewModel = viewModel,
-                        onNavigateBack = { parentFragmentManager.popBackStack() }
-                    )
-                }
+            TwochaTheme(themeStyle = themeStyle, dynamicColor = dynamicColor) {
+                ConfigScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { parentFragmentManager.popBackStack() }
+                )
             }
         }
     }

@@ -36,3 +36,19 @@
 
 # Keep Compose
 -dontwarn androidx.compose.**
+
+# DataStore Preferences - prevent ClassCastException
+-keep class androidx.datastore.** { *; }
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}
+
+# Keep preference keys to prevent type confusion after obfuscation
+-keep class dev.yaul.twocha.data.PreferencesManager { *; }
+-keep class dev.yaul.twocha.data.PreferencesManager$Companion { *; }
+
+# Keep ThemeStyle enum for proper deserialization
+-keep enum dev.yaul.twocha.ui.theme.ThemeStyle { *; }
+
+# Keep ViewModel classes
+-keep class dev.yaul.twocha.viewmodel.** { *; }
