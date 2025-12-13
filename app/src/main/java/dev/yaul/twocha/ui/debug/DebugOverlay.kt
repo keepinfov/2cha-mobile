@@ -14,14 +14,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.CoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.toClipEntry
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import dev.yaul.twocha.ui.theme.*
@@ -131,8 +133,7 @@ private fun DebugPanel(onDismiss: () -> Unit) {
             )
 
             // Tabs
-            // FIXME: Deprecated use
-            TabRow (selectedTabIndex = selectedTab) {
+            PrimaryTabRow(selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
@@ -161,7 +162,8 @@ private fun DebugPanel(onDismiss: () -> Unit) {
 @Composable
 private fun ColorPaletteTab() {
     val colors = LocalTwochaColors.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(Spacing.xs)
@@ -180,7 +182,7 @@ private fun ColorPaletteTab() {
                 name = name,
                 color = color,
                 onCopy = {
-                    clipboardManager.setText(AnnotatedString(color.toHexString()))
+                    scope.launch { clipboard.setClip(color.toHexString().toClipEntry()) }
                 }
             )
         }
@@ -381,7 +383,7 @@ private fun AnimationControlsTab() {
             )
         }
 
-        Divider()
+        HorizontalDivider()
 
         // Quick presets
         Text(

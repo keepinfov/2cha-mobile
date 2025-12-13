@@ -18,8 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,7 +46,7 @@ fun LogsScreen(
     onNavigateBack: () -> Unit
 ) {
     val logs by viewModel.logs.collectAsState()
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -176,7 +176,7 @@ fun LogsScreen(
                         val text = filteredLogs.joinToString("\n") { log ->
                             "${log.timestamp} [${log.level}] ${log.message}"
                         }
-                        clipboardManager.setText(AnnotatedString(text))
+                        scope.launch { clipboard.setClip(text.toClipEntry()) }
                     }
                 ) {
                     Icon(Icons.Filled.ContentCopy, contentDescription = "Copy All")
@@ -231,9 +231,8 @@ fun LogsScreen(
                         LogEntryCard(
                             log = log,
                             onCopy = {
-                                clipboardManager.setText(
-                                    AnnotatedString("${log.timestamp} [${log.level}] ${log.message}")
-                                )
+                                val text = "${log.timestamp} [${log.level}] ${log.message}"
+                                scope.launch { clipboard.setClip(text.toClipEntry()) }
                             }
                         )
                     }
