@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import android.content.ClipData
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.toClipEntry
 import kotlinx.coroutines.launch
@@ -182,7 +183,7 @@ private fun ColorPaletteTab() {
                 name = name,
                 color = color,
                 onCopy = {
-                    scope.launch { clipboard.setClipEntry(color.toHexString().toClipEntry()) }
+                    scope.launch { clipboard.setClipEntry(ClipData.newPlainText("Color", color.toHexString()).toClipEntry()) }
                 }
             )
         }

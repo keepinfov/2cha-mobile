@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import android.content.ClipData
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.text.font.FontFamily
@@ -176,7 +177,7 @@ fun LogsScreen(
                         val text = filteredLogs.joinToString("\n") { log ->
                             "${log.timestamp} [${log.level}] ${log.message}"
                         }
-                        scope.launch { clipboard.setClipEntry(text.toClipEntry()) }
+                        scope.launch { clipboard.setClipEntry(ClipData.newPlainText("Logs", text).toClipEntry()) }
                     }
                 ) {
                     Icon(Icons.Filled.ContentCopy, contentDescription = "Copy All")
@@ -232,7 +233,7 @@ fun LogsScreen(
                             log = log,
                             onCopy = {
                                 val text = "${log.timestamp} [${log.level}] ${log.message}"
-                                scope.launch { clipboard.setClipEntry(text.toClipEntry()) }
+                                scope.launch { clipboard.setClipEntry(ClipData.newPlainText("Log", text).toClipEntry()) }
                             }
                         )
                     }
