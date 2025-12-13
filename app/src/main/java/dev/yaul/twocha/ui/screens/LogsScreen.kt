@@ -176,7 +176,7 @@ fun LogsScreen(
                         val text = filteredLogs.joinToString("\n") { log ->
                             "${log.timestamp} [${log.level}] ${log.message}"
                         }
-                        scope.launch { clipboard.setClip(text.toClipEntry()) }
+                        scope.launch { clipboard.setClipEntry(text.toClipEntry()) }
                     }
                 ) {
                     Icon(Icons.Filled.ContentCopy, contentDescription = "Copy All")
@@ -232,7 +232,7 @@ fun LogsScreen(
                             log = log,
                             onCopy = {
                                 val text = "${log.timestamp} [${log.level}] ${log.message}"
-                                scope.launch { clipboard.setClip(text.toClipEntry()) }
+                                scope.launch { clipboard.setClipEntry(text.toClipEntry()) }
                             }
                         )
                     }

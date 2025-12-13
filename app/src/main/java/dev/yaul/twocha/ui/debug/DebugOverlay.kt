@@ -182,7 +182,7 @@ private fun ColorPaletteTab() {
                 name = name,
                 color = color,
                 onCopy = {
-                    scope.launch { clipboard.setClip(color.toHexString().toClipEntry()) }
+                    scope.launch { clipboard.setClipEntry(color.toHexString().toClipEntry()) }
                 }
             )
         }
