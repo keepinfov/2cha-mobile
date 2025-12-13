@@ -124,11 +124,6 @@ fun TwochaNavHost(
                         launchSingleTop = true
                     }
                 },
-                onNavigateToLogs = {
-                    navController.navigate(Screen.Logs.route) {
-                        launchSingleTop = true
-                    }
-                }
             )
         }
 

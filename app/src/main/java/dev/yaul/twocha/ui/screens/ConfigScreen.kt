@@ -407,6 +407,8 @@ private fun ConfigHero(connectionState: ConnectionState) {
         ConnectionState.CONNECTED -> "Connected"
         ConnectionState.CONNECTING -> "Connecting"
         ConnectionState.DISCONNECTED -> "Ready to connect"
+        ConnectionState.DISCONNECTING -> "Disconnecting"
+        ConnectionState.ERROR -> "Error"
     }
 
     Card(
