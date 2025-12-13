@@ -24,7 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.core.view.WindowInsetsControllerCompat
 
 /**
  * Material 3 Expressive Theme System
@@ -202,7 +202,6 @@ fun TwochaTheme(
 ) {
     val context = LocalContext.current
     val isDark = themeStyle.isDark()
-    val systemUiController = rememberSystemUiController()
 
     // Get color scheme
     val colorScheme = when {
@@ -232,12 +231,10 @@ fun TwochaTheme(
             val window = view.findActivity()?.window ?: return@SideEffect
             WindowCompat.setDecorFitsSystemWindows(window, false)
 
-            // Configure system bars without deprecated APIs
-            systemUiController.setSystemBarsColor(
-                color = Color.Transparent,
-                darkIcons = !isDark,
-                isNavigationBarContrastEnforced = false
-            )
+            // Configure system bars using WindowInsetsControllerCompat
+            val insetsController = WindowInsetsControllerCompat(window, view)
+            insetsController.isAppearanceLightStatusBars = !isDark
+            insetsController.isAppearanceLightNavigationBars = !isDark
         }
     }
 

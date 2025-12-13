@@ -75,6 +75,7 @@ class VpnViewModel @Inject constructor(
     private val _showNotifications = MutableStateFlow(true)
     private val _keepAliveOnBattery = MutableStateFlow(true)
 
+    @Suppress("INFERRED_TYPE_VARIABLE_INTO_POSSIBLE_EMPTY_INTERSECTION")
     val settings: StateFlow<Settings> = combine(
         darkMode,
         dynamicColor,
@@ -82,14 +83,14 @@ class VpnViewModel @Inject constructor(
         autoConnect,
         _showNotifications,
         _keepAliveOnBattery
-    ) { darkMode, dynamicColor, themeStyle, autoConnect, showNotifications, keepAliveOnBattery ->
+    ) { darkModeVal, dynamicColorVal, themeStyleVal, autoConnectVal, showNotificationsVal, keepAliveOnBatteryVal ->
         Settings(
-            darkMode = darkMode,
-            dynamicColor = dynamicColor,
-            themeStyle = themeStyle,
-            autoConnect = autoConnect,
-            showNotifications = showNotifications,
-            keepAliveOnBattery = keepAliveOnBattery
+            darkMode = darkModeVal,
+            dynamicColor = dynamicColorVal,
+            themeStyle = themeStyleVal,
+            autoConnect = autoConnectVal,
+            showNotifications = showNotificationsVal,
+            keepAliveOnBattery = keepAliveOnBatteryVal
         )
     }.stateIn(
         viewModelScope,
