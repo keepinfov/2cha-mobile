@@ -35,11 +35,10 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.SettingsEthernet
-import androidx.compose.material.icons.rounded.SettingsInputHdmi
 import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -49,15 +48,22 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -77,6 +83,7 @@ import androidx.compose.ui.unit.dp
 import dev.yaul.twocha.config.CipherSuite
 import dev.yaul.twocha.config.VpnConfig
 import dev.yaul.twocha.ui.theme.IconSize
+import dev.yaul.twocha.ui.theme.Radius
 import dev.yaul.twocha.ui.theme.Spacing
 import dev.yaul.twocha.viewmodel.VpnViewModel
 import dev.yaul.twocha.vpn.ConnectionState
@@ -105,9 +112,12 @@ fun ConfigScreen(
 
     var showKeyField by remember { mutableStateOf(false) }
     var showAdvanced by remember { mutableStateOf(false) }
-    var showSaveDialog by remember { mutableStateOf(false) }
+    var showSaveSheet by remember { mutableStateOf(false) }
+    val saveSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             CenterAlignedTopAppBar(
                 navigationIcon = {
@@ -116,7 +126,7 @@ fun ConfigScreen(
                     }
                 },
                 title = {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
                         Text("Configuration", style = MaterialTheme.typography.titleLarge)
                         Text(
                             text = "Craft your perfect tunnel setup",
@@ -126,7 +136,7 @@ fun ConfigScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showSaveDialog = true }, enabled = !isConnected) {
+                    IconButton(onClick = { showSaveSheet = true }, enabled = !isConnected) {
                         Icon(Icons.Rounded.Save, contentDescription = "Save configuration")
                     }
                 }
@@ -283,8 +293,14 @@ fun ConfigScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Network tweaks", style = MaterialTheme.typography.titleSmall)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xxs)
+                    ) {
+                        Text(
+                            "Network tweaks",
+                            style = MaterialTheme.typography.titleSmall
+                        )
                         Text(
                             "Adjust MTU and keepalive for tricky networks",
                             style = MaterialTheme.typography.bodySmall,
@@ -293,13 +309,20 @@ fun ConfigScreen(
                     }
                     AssistChip(
                         onClick = { showAdvanced = !showAdvanced },
-                        label = { Text(if (showAdvanced) "Hide" else "Show") },
+                        label = {
+                            Text(
+                                if (showAdvanced) "Hide" else "Show",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = if (showAdvanced) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                                contentDescription = null
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
                             )
-                        }
+                        },
+                        shape = RoundedCornerShape(Radius.sm)
                     )
                 }
 
@@ -326,7 +349,7 @@ fun ConfigScreen(
                             label = "Keepalive interval",
                             placeholder = "25",
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            leadingIcon = { Icon(Icons.Rounded.SettingsInputHdmi, contentDescription = null) },
+                            leadingIcon = { Icon(Icons.Rounded.Timer, contentDescription = null) },
                             supportingText = "Seconds between keepalive packets",
                             enabled = !isConnected
                         )
@@ -338,56 +361,230 @@ fun ConfigScreen(
         }
     }
 
-    if (showSaveDialog) {
-        AlertDialog(
-            onDismissRequest = { showSaveDialog = false },
-            icon = { Icon(Icons.Rounded.Save, contentDescription = null) },
-            title = { Text("Save configuration") },
-            text = { Text("Save the current configuration? This will overwrite any existing settings.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val newConfig = VpnConfig(
-                            client = dev.yaul.twocha.config.ClientSection(
-                                server = serverAddress
-                            ),
-                            tun = dev.yaul.twocha.config.TunSection(
-                                mtu = mtu.toIntOrNull() ?: 1420
-                            ),
-                            crypto = dev.yaul.twocha.config.CryptoSection(
-                                cipher = selectedCipher,
-                                key = encryptionKey
-                            ),
-                            ipv4 = dev.yaul.twocha.config.Ipv4Section(
-                                enable = true,
-                                address = ipv4Address,
-                                prefix = ipv4Prefix.toIntOrNull() ?: 24,
-                                routeAll = ipv4RouteAll
-                            ),
-                            ipv6 = dev.yaul.twocha.config.Ipv6Section(
-                                enable = ipv6Enabled,
-                                address = if (ipv6Enabled) ipv6Address else null
-                            ),
-                            dns = dev.yaul.twocha.config.DnsSection(
-                                serversV4 = dnsServers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                            ),
-                            timeouts = dev.yaul.twocha.config.TimeoutsSection(
-                                keepalive = keepalive.toLongOrNull() ?: 25
-                            )
-                        )
-                        viewModel.saveConfig(newConfig)
-                        showSaveDialog = false
-                        onNavigateBack()
-                    }
-                ) {
-                    Text("Save")
-                }
+    if (showSaveSheet) {
+        SaveConfigBottomSheet(
+            sheetState = saveSheetState,
+            onDismiss = { showSaveSheet = false },
+            onSave = {
+                val newConfig = VpnConfig(
+                    client = dev.yaul.twocha.config.ClientSection(
+                        server = serverAddress
+                    ),
+                    tun = dev.yaul.twocha.config.TunSection(
+                        mtu = mtu.toIntOrNull() ?: 1420
+                    ),
+                    crypto = dev.yaul.twocha.config.CryptoSection(
+                        cipher = selectedCipher,
+                        key = encryptionKey
+                    ),
+                    ipv4 = dev.yaul.twocha.config.Ipv4Section(
+                        enable = true,
+                        address = ipv4Address,
+                        prefix = ipv4Prefix.toIntOrNull() ?: 24,
+                        routeAll = ipv4RouteAll
+                    ),
+                    ipv6 = dev.yaul.twocha.config.Ipv6Section(
+                        enable = ipv6Enabled,
+                        address = if (ipv6Enabled) ipv6Address else null
+                    ),
+                    dns = dev.yaul.twocha.config.DnsSection(
+                        serversV4 = dnsServers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    ),
+                    timeouts = dev.yaul.twocha.config.TimeoutsSection(
+                        keepalive = keepalive.toLongOrNull() ?: 25
+                    )
+                )
+                viewModel.saveConfig(newConfig)
+                showSaveSheet = false
+                onNavigateBack()
             },
-            dismissButton = {
-                TextButton(onClick = { showSaveDialog = false }) {
-                    Text("Cancel")
+            serverAddress = serverAddress,
+            cipher = selectedCipher,
+            keyLength = encryptionKey.length
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SaveConfigBottomSheet(
+    sheetState: SheetState,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+    serverAddress: String,
+    cipher: CipherSuite,
+    keyLength: Int
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(topStart = Radius.xxl, topEnd = Radius.xxl)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.xxl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(Radius.lg)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Save,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(IconSize.lg)
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                    Text(
+                        "Save Configuration",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    Text(
+                        "Review your settings before saving",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
+
+            // Summary card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(Radius.lg),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+            ) {
+                Column(
+                    modifier = Modifier.padding(Spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                ) {
+                    SaveSummaryRow(
+                        icon = Icons.Rounded.Shield,
+                        label = "Server",
+                        value = serverAddress.ifEmpty { "Not set" }
+                    )
+                    SaveSummaryRow(
+                        icon = Icons.Rounded.Lock,
+                        label = "Cipher",
+                        value = when (cipher) {
+                            CipherSuite.CHACHA20_POLY1305 -> "ChaCha20-Poly1305"
+                            CipherSuite.AES_256_GCM -> "AES-256-GCM"
+                        }
+                    )
+                    SaveSummaryRow(
+                        icon = Icons.Rounded.Key,
+                        label = "Key",
+                        value = if (keyLength == 64) "Valid (64 chars)" else "Invalid ($keyLength/64)",
+                        isError = keyLength != 64
+                    )
+                }
+            }
+
+            // Warning if key invalid
+            if (keyLength != 64) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(Radius.md),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(Spacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.Key,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            "Encryption key should be exactly 64 hex characters",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(Spacing.xs))
+
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(Radius.md)
+                ) {
+                    Text("Cancel")
+                }
+                FilledTonalButton(
+                    onClick = onSave,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(Radius.md)
+                ) {
+                    Icon(
+                        Icons.Rounded.Save,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(Spacing.xs))
+                    Text("Save")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaveSummaryRow(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    isError: Boolean = false
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(IconSize.sm)
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -413,13 +610,14 @@ private fun ConfigHero(connectionState: ConnectionState) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(Radius.xxl),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
         )
     ) {
         Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .background(gradient)
                 .padding(Spacing.lg)
         ) {
@@ -439,7 +637,7 @@ private fun ConfigHero(connectionState: ConnectionState) {
                         )
                     }
                     Spacer(modifier = Modifier.width(Spacing.sm))
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
                         Text(
                             text = "Configuration",
                             style = MaterialTheme.typography.titleMedium
@@ -488,9 +686,10 @@ private fun ConfigWarning() {
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer
         ),
-        shape = RoundedCornerShape(18.dp)
+        shape = RoundedCornerShape(Radius.xl)
     ) {
         ListItem(
+            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.errorContainer),
             leadingContent = {
                 Icon(
                     imageVector = Icons.Rounded.Lock,
@@ -523,8 +722,8 @@ private fun ConfigGroupCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        shape = RoundedCornerShape(Radius.xl),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
         Column(
             modifier = Modifier.padding(Spacing.md),
@@ -558,23 +757,27 @@ private fun ConfigTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     enabled: Boolean = true
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            placeholder = placeholder?.let { { Text(it) } },
-            leadingIcon = leadingIcon,
-            trailingIcon = trailingIcon,
-            visualTransformation = visualTransformation,
-            keyboardOptions = keyboardOptions,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = enabled,
-            singleLine = true,
-            supportingText = supportingText?.let { { Text(it) } },
-            isError = isError
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = placeholder?.let { { Text(it) } },
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
+        modifier = modifier.fillMaxWidth(),
+        enabled = enabled,
+        singleLine = true,
+        supportingText = supportingText?.let { { Text(it) } },
+        isError = isError,
+        shape = RoundedCornerShape(Radius.md),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.3f),
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         )
-    }
+    )
 }
 
 @Composable
@@ -588,8 +791,9 @@ private fun ConfigSwitchRow(
 ) {
     ListItem(
         modifier = Modifier.fillMaxWidth(),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
                 Text(title, style = MaterialTheme.typography.titleSmall)
                 Text(
                     subtitle,
@@ -626,15 +830,18 @@ private fun CipherDropdown(
 ) {
     var cipherExpanded by remember { mutableStateOf(false) }
 
+    val cipherText = when (selectedCipher) {
+        CipherSuite.CHACHA20_POLY1305 -> "ChaCha20-Poly1305"
+        CipherSuite.AES_256_GCM -> "AES-256-GCM"
+    }
+
     ExposedDropdownMenuBox(
         expanded = cipherExpanded,
-        onExpandedChange = { if (enabled) cipherExpanded = it }
+        onExpandedChange = { if (enabled) cipherExpanded = it },
+        modifier = Modifier.fillMaxWidth()
     ) {
         OutlinedTextField(
-            value = when (selectedCipher) {
-                CipherSuite.CHACHA20_POLY1305 -> "ChaCha20-Poly1305"
-                CipherSuite.AES_256_GCM -> "AES-256-GCM"
-            },
+            value = cipherText,
             onValueChange = {},
             readOnly = true,
             label = { Text("Cipher") },
@@ -643,26 +850,44 @@ private fun CipherDropdown(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled),
-            enabled = enabled
+            enabled = enabled,
+            singleLine = true,
+            shape = RoundedCornerShape(Radius.md),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.3f),
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+            )
         )
         ExposedDropdownMenu(
             expanded = cipherExpanded,
-            onDismissRequest = { cipherExpanded = false }
+            onDismissRequest = { cipherExpanded = false },
+            shape = RoundedCornerShape(Radius.md)
         ) {
             DropdownMenuItem(
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("ChaCha20-Poly1305")
-                        Text(
-                            "Fast and modern",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                trailingIcon = {
-                    if (selectedCipher == CipherSuite.CHACHA20_POLY1305) {
-                        Text("Recommended", color = MaterialTheme.colorScheme.primary)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("ChaCha20-Poly1305", maxLines = 1)
+                            Text(
+                                "Fast and modern",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                        if (selectedCipher == CipherSuite.CHACHA20_POLY1305) {
+                            Spacer(modifier = Modifier.width(Spacing.sm))
+                            Text(
+                                "Recommended",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 },
                 onClick = {
@@ -673,12 +898,13 @@ private fun CipherDropdown(
 
             DropdownMenuItem(
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("AES-256-GCM")
+                    Column {
+                        Text("AES-256-GCM", maxLines = 1)
                         Text(
                             "Hardware accelerated on many devices",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
                         )
                     }
                 },

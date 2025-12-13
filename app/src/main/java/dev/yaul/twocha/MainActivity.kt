@@ -1,6 +1,7 @@
 package dev.yaul.twocha
 
 import android.app.Activity
+import android.graphics.Color
 import android.net.VpnService
 import android.os.Bundle
 import androidx.activity.viewModels
@@ -33,11 +34,17 @@ class MainActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
 
+        setupTransparentStatusBar()
         applyEdgeToEdgeInsets()
 
         if (savedInstanceState == null) {
             openHome()
         }
+    }
+
+    private fun setupTransparentStatusBar() {
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
     }
 
     private fun applyEdgeToEdgeInsets() {
@@ -54,10 +61,10 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager
             .beginTransaction()
             .setCustomAnimations(
-                android.R.anim.slide_in_left,
-                android.R.anim.slide_out_right,
-                android.R.anim.slide_in_left,
-                android.R.anim.slide_out_right
+                R.anim.slide_in_right,  // Enter: new fragment slides in from right
+                R.anim.slide_out_left,  // Exit: current fragment slides out to left
+                R.anim.slide_in_left,   // Pop enter: previous fragment slides in from left
+                R.anim.slide_out_right  // Pop exit: current fragment slides out to right
             )
             .replace(R.id.fragment_container, ConfigFragment(), ConfigFragment.TAG)
             .addToBackStack(ConfigFragment.TAG)
@@ -72,10 +79,10 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager
             .beginTransaction()
             .setCustomAnimations(
-                android.R.anim.fade_in,
-                android.R.anim.fade_out,
-                android.R.anim.fade_in,
-                android.R.anim.fade_out
+                R.anim.slide_in_right,  // Enter: new fragment slides in from right
+                R.anim.slide_out_left,  // Exit: current fragment slides out to left
+                R.anim.slide_in_left,   // Pop enter: previous fragment slides in from left
+                R.anim.slide_out_right  // Pop exit: current fragment slides out to right
             )
             .replace(R.id.fragment_container, SettingsFragment(), SettingsFragment.TAG)
             .addToBackStack(SettingsFragment.TAG)
