@@ -49,6 +49,7 @@ object ComponentShapes {
 
     // Buttons
     val button = RoundedCornerShape(Radius.md)
+    val buttonAction = RoundedCornerShape(Radius.action)
     val buttonPill = RoundedCornerShape(Radius.full)
     val fabStandard = RoundedCornerShape(Radius.lg)
     val fabLarge = RoundedCornerShape(Radius.xxl)

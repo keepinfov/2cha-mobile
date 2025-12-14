@@ -68,9 +68,11 @@ import dev.yaul.twocha.R
 import dev.yaul.twocha.config.VpnConfig
 import dev.yaul.twocha.protocol.Constants
 import dev.yaul.twocha.ui.components.ShieldConnectButton
+import dev.yaul.twocha.ui.theme.ComponentShapes
 import dev.yaul.twocha.ui.theme.IconSize
 import dev.yaul.twocha.ui.theme.Radius
 import dev.yaul.twocha.ui.theme.Spacing
+import dev.yaul.twocha.ui.theme.TouchTargets
 import dev.yaul.twocha.viewmodel.VpnViewModel
 import dev.yaul.twocha.vpn.ConnectionState
 import java.io.BufferedReader
@@ -237,7 +239,7 @@ private fun TopActions(
     ) {
         FilledTonalButton(
             onClick = onOpenConfig,
-            shape = RoundedCornerShape(18.dp)
+            shape = ComponentShapes.buttonAction
         ) {
             Icon(Icons.Rounded.Download, contentDescription = null)
             Text(
@@ -249,7 +251,7 @@ private fun TopActions(
         IconButton(
             onClick = onOpenSettings,
             modifier = Modifier
-                .size(44.dp)
+                .size(TouchTargets.default)
                 .background(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     shape = CircleShape
@@ -282,7 +284,7 @@ private fun QuickActions(
                 onManualSetup()
             },
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(18.dp)
+            shape = ComponentShapes.buttonAction
         ) {
             Icon(Icons.Rounded.Shield, contentDescription = null)
             Text(
@@ -297,7 +299,7 @@ private fun QuickActions(
                 onImport()
             },
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(18.dp),
+            shape = ComponentShapes.buttonAction,
             enabled = isConfigMissing
         ) {
             Icon(Icons.Rounded.FileCopy, contentDescription = null)
@@ -348,7 +350,7 @@ private fun ProtocolCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(44.dp)
+                                    .size(TouchTargets.default)
                                     .background(
                                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                                         shape = CircleShape
@@ -536,7 +538,7 @@ private fun AboutInfoItem(
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(IconSize.lgPlus)
                 .background(
                     color = iconColor.copy(alpha = 0.12f),
                     shape = CircleShape
