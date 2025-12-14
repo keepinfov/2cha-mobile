@@ -1,9 +1,10 @@
 package dev.yaul.twocha.ui.screens
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -98,6 +99,12 @@ fun SettingsScreen(
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val settings by viewModel.settings.collectAsState()
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importConfig(context, it) }
+    }
 
     var showAboutDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
@@ -248,12 +255,16 @@ fun SettingsScreen(
                     trailing = {
                         AssistChip(onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            viewModel.importConfig(context)
+                            importLauncher.launch(
+                                arrayOf("application/toml", "application/json", "text/plain", "*/*")
+                            )
                         }, label = { Text("Browse") })
                     },
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        viewModel.importConfig(context)
+                        importLauncher.launch(
+                            arrayOf("application/toml", "application/json", "text/plain", "*/*")
+                        )
                     }
                 )
 

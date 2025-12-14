@@ -1,6 +1,5 @@
 package dev.yaul.twocha.ui.screens
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
@@ -53,7 +52,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -75,8 +73,6 @@ import dev.yaul.twocha.ui.theme.Spacing
 import dev.yaul.twocha.ui.theme.TouchTargets
 import dev.yaul.twocha.viewmodel.VpnViewModel
 import dev.yaul.twocha.vpn.ConnectionState
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import kotlinx.coroutines.launch
 
 @Composable
@@ -92,23 +88,11 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
-    val coroutineScope = rememberCoroutineScope()
 
     val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            coroutineScope.launch {
-                runCatching { readTextFromUri(context, uri) }
-                    .onSuccess { viewModel.importConfig(it) }
-                    .onFailure {
-                        snackbarHostState.showSnackbar(
-                            message = context.getString(R.string.error_invalid_config),
-                            duration = SnackbarDuration.Short
-                        )
-                    }
-            }
-        }
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importConfig(context, it) }
     }
 
     val vpnPermissionLauncher = rememberLauncherForActivityResult(
@@ -181,7 +165,11 @@ fun HomeScreen(
 
             QuickActions(
                 onManualSetup = onNavigateToConfig,
-                onImport = { importLauncher.launch("application/toml") },
+                onImport = {
+                    importLauncher.launch(
+                        arrayOf("application/toml", "application/json", "text/plain", "*/*")
+                    )
+                },
                 isConfigMissing = hasConfig.not()
             )
 
@@ -568,13 +556,4 @@ private fun AboutInfoItem(
             )
         }
     }
-}
-
-private fun readTextFromUri(context: android.content.Context, uri: Uri): String {
-    context.contentResolver.openInputStream(uri)?.use { inputStream ->
-        BufferedReader(InputStreamReader(inputStream)).use { reader ->
-            return reader.readText()
-        }
-    }
-    error("Unable to read file")
 }

@@ -30,15 +30,18 @@ object ConfigParser {
             // Skip comments and empty lines
             if (trimmed.isEmpty() || trimmed.startsWith("#")) continue
 
+            val cleaned = trimmed.substringBefore("#").trim()
+            if (cleaned.isEmpty()) continue
+
             // Section header
-            if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-                currentSection = trimmed.substring(1, trimmed.length - 1)
+            if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+                currentSection = cleaned.substring(1, cleaned.length - 1)
                 continue
             }
 
             // Key-value pair
-            if (trimmed.contains("=")) {
-                val (key, value) = trimmed.split("=", limit = 2)
+            if (cleaned.contains("=")) {
+                val (key, value) = cleaned.split("=", limit = 2)
                 val fullKey = if (currentSection.isNotEmpty()) "$currentSection.${key.trim()}" else key.trim()
                 values[fullKey] = value.trim().removeSurrounding("\"")
             }
