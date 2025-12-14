@@ -101,6 +101,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val settings by viewModel.settings.collectAsState()
+    val linkErrorMessage = stringResource(dev.yaul.twocha.R.string.settings_link_error)
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -311,7 +312,7 @@ fun SettingsScreen(
                             .onFailure {
                                 Toast.makeText(
                                     context,
-                                    stringResource(dev.yaul.twocha.R.string.settings_link_error),
+                                    linkErrorMessage,
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -332,7 +333,7 @@ fun SettingsScreen(
                             .onFailure {
                                 Toast.makeText(
                                     context,
-                                    stringResource(dev.yaul.twocha.R.string.settings_link_error),
+                                    linkErrorMessage,
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -346,14 +347,14 @@ fun SettingsScreen(
                     trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = "https://github.com/keepinfov/2cha/issues".toUri()
+                            data = "https://github.com/keepinfov/2cha-mobile/issues".toUri()
                         }
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         runCatching { context.startActivity(intent) }
                             .onFailure {
                                 Toast.makeText(
                                     context,
-                                    stringResource(dev.yaul.twocha.R.string.settings_link_error),
+                                    linkErrorMessage,
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -587,7 +588,7 @@ private fun SettingRow(
     trailingIcon: ImageVector? = null,
     supporting: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    onClick: @Composable () -> Unit
+    onClick: () -> Unit
 ) {
     ListItem(
         modifier = modifier

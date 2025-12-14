@@ -2,7 +2,6 @@ package dev.yaul.twocha
 
 import android.app.Activity
 import android.content.res.Configuration
-import android.graphics.Color
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
@@ -48,14 +47,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupTransparentStatusBar() {
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
+        // System bar colors are automatically transparent with edge-to-edge
+        // No need to set statusBarColor or navigationBarColor explicitly
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes = window.attributes.apply {
-                layoutInDisplayCutoutMode =
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            }
+        window.attributes = window.attributes.apply {
+            layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
     }
 
@@ -117,15 +114,6 @@ class MainActivity : AppCompatActivity() {
             .beginTransaction()
             .replace(R.id.fragment_container, existing ?: fragment, tag)
             .commit()
-    }
-
-    fun requestVpnPermission() {
-        val intent = VpnService.prepare(this)
-        if (intent != null) {
-            vpnPermissionLauncher.launch(intent)
-        } else {
-            startVpnService()
-        }
     }
 
     private fun startVpnService() {

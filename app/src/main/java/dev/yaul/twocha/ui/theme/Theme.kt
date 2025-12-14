@@ -23,7 +23,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 /**
@@ -224,14 +223,13 @@ fun TwochaTheme(
         TwochaThemeState(themeStyle, dynamicColor)
     }
 
-    // Configure system bars
+    // Configure system bars appearance
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = view.findActivity()?.window ?: return@SideEffect
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-
-            // Configure system bars using WindowInsetsControllerCompat
+            // Edge-to-edge is already configured in MainActivity
+            // Just update the system bars appearance based on theme
             val insetsController = WindowInsetsControllerCompat(window, view)
             insetsController.isAppearanceLightStatusBars = !isDark
             insetsController.isAppearanceLightNavigationBars = !isDark
