@@ -107,10 +107,11 @@ fun ShieldConnectButton(
                     stiffness = SpringPhysics.gentleStiffness
                 )
             )
+            .clip(ComponentShapes.connectionCard)
             .clickable(
                 enabled = !isConnecting,
                 interactionSource = interactionSource,
-                indication = ripple(bounded = true)
+                indication = rememberRipple()
             ) { onToggle() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
