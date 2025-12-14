@@ -1,9 +1,10 @@
 package dev.yaul.twocha.ui.screens
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.AlertDialog
@@ -75,12 +77,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.yaul.twocha.BuildConfig
+import dev.yaul.twocha.protocol.Constants
 import dev.yaul.twocha.ui.theme.IconSize
+import dev.yaul.twocha.ui.theme.Radius
 import dev.yaul.twocha.ui.theme.Spacing
 import dev.yaul.twocha.ui.theme.ThemeStyle
 import dev.yaul.twocha.ui.theme.getColorPalette
 import dev.yaul.twocha.ui.theme.isDark
 import dev.yaul.twocha.viewmodel.VpnViewModel
+import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 
 /**
  * Settings Screen - Reimagined Material 3 layout
@@ -94,6 +101,12 @@ fun SettingsScreen(
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val settings by viewModel.settings.collectAsState()
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importConfig(context, it) }
+    }
 
     var showAboutDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
@@ -244,12 +257,16 @@ fun SettingsScreen(
                     trailing = {
                         AssistChip(onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            viewModel.importConfig(context)
+                            importLauncher.launch(
+                                arrayOf("application/toml", "application/json", "text/plain", "*/*")
+                            )
                         }, label = { Text("Browse") })
                     },
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        viewModel.importConfig(context)
+                        importLauncher.launch(
+                            arrayOf("application/toml", "application/json", "text/plain", "*/*")
+                        )
                     }
                 )
 
@@ -287,14 +304,35 @@ fun SettingsScreen(
                     trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://github.com/keepinfov/2cha")
+                            data = "https://github.com/keepinfov/2cha".toUri()
                         }
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         runCatching { context.startActivity(intent) }
                             .onFailure {
                                 Toast.makeText(
                                     context,
-                                    context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                    stringResource(dev.yaul.twocha.R.string.settings_link_error),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    }
+                )
+
+                SettingRow(
+                    icon = Icons.Rounded.PhoneAndroid,
+                    title = "Mobile app source",
+                    subtitle = "See the Android client on GitHub",
+                    trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = "https://github.com/keepinfov/2cha-mobile".toUri()
+                        }
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        runCatching { context.startActivity(intent) }
+                            .onFailure {
+                                Toast.makeText(
+                                    context,
+                                    stringResource(dev.yaul.twocha.R.string.settings_link_error),
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -308,14 +346,14 @@ fun SettingsScreen(
                     trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://github.com/keepinfov/2cha/issues")
+                            data = "https://github.com/keepinfov/2cha/issues".toUri()
                         }
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         runCatching { context.startActivity(intent) }
                             .onFailure {
                                 Toast.makeText(
                                     context,
-                                    context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                    stringResource(dev.yaul.twocha.R.string.settings_link_error),
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -326,7 +364,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(Spacing.lg))
 
             Text(
-                text = "2cha VPN v0.6.3 • Protocol v3",
+                text = "2cha VPN v${BuildConfig.VERSION_NAME} • Protocol v${Constants.PROTOCOL_VERSION.toInt()}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -364,8 +402,8 @@ fun SettingsScreen(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(Spacing.xs)
                 ) {
-                    AboutItem("Version", "0.6.3")
-                    AboutItem("Protocol", "v3")
+                    AboutItem("Version", BuildConfig.VERSION_NAME)
+                    AboutItem("Protocol", "v${Constants.PROTOCOL_VERSION.toInt()}")
                     AboutItem("Encryption", "ChaCha20-Poly1305 / AES-256-GCM")
                     AboutItem("License", "MIT")
 
@@ -436,7 +474,7 @@ private fun SettingsHero() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = Spacing.md),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(Radius.xxl),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         )
@@ -481,12 +519,12 @@ private fun SettingsHero() {
 @Composable
 private fun SettingsBadge(text: String, color: Color) {
     Surface(
-        shape = RoundedCornerShape(50),
+        shape = RoundedCornerShape(Radius.full),
         color = color.copy(alpha = 0.15f),
         modifier = Modifier.border(
             width = 1.dp,
             color = color.copy(alpha = 0.4f),
-            shape = RoundedCornerShape(50)
+            shape = RoundedCornerShape(Radius.full)
         )
     ) {
         Text(
@@ -508,7 +546,7 @@ private fun SettingsGroupCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = Spacing.xs),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(Radius.xl),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(Spacing.md)) {
@@ -549,11 +587,11 @@ private fun SettingRow(
     trailingIcon: ImageVector? = null,
     supporting: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    onClick: () -> Unit
+    onClick: @Composable () -> Unit
 ) {
     ListItem(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.lg))
             .clickable(onClick = onClick),
         headlineContent = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -654,7 +692,7 @@ private fun ThemeOptionRow(
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(Radius.mdPlus),
         tonalElevation = 2.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -668,7 +706,7 @@ private fun ThemeOptionRow(
             Box(
                 modifier = Modifier
                     .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(Radius.md))
                     .background(palette.primary)
             ) {
                 Column(

@@ -1,6 +1,5 @@
 package dev.yaul.twocha.ui.screens
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
@@ -53,7 +52,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -68,13 +66,13 @@ import dev.yaul.twocha.R
 import dev.yaul.twocha.config.VpnConfig
 import dev.yaul.twocha.protocol.Constants
 import dev.yaul.twocha.ui.components.ShieldConnectButton
+import dev.yaul.twocha.ui.theme.ComponentShapes
 import dev.yaul.twocha.ui.theme.IconSize
 import dev.yaul.twocha.ui.theme.Radius
 import dev.yaul.twocha.ui.theme.Spacing
+import dev.yaul.twocha.ui.theme.TouchTargets
 import dev.yaul.twocha.viewmodel.VpnViewModel
 import dev.yaul.twocha.vpn.ConnectionState
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import kotlinx.coroutines.launch
 
 @Composable
@@ -90,23 +88,11 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
-    val coroutineScope = rememberCoroutineScope()
 
     val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            coroutineScope.launch {
-                runCatching { readTextFromUri(context, uri) }
-                    .onSuccess { viewModel.importConfig(it) }
-                    .onFailure {
-                        snackbarHostState.showSnackbar(
-                            message = context.getString(R.string.error_invalid_config),
-                            duration = SnackbarDuration.Short
-                        )
-                    }
-            }
-        }
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importConfig(context, it) }
     }
 
     val vpnPermissionLauncher = rememberLauncherForActivityResult(
@@ -179,7 +165,11 @@ fun HomeScreen(
 
             QuickActions(
                 onManualSetup = onNavigateToConfig,
-                onImport = { importLauncher.launch("application/toml") },
+                onImport = {
+                    importLauncher.launch(
+                        arrayOf("application/toml", "application/json", "text/plain", "*/*")
+                    )
+                },
                 isConfigMissing = hasConfig.not()
             )
 
@@ -194,18 +184,19 @@ private fun HomeHeader() {
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
+        ),
+        shape = RoundedCornerShape(18.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.Center
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
                 Text(
                     text = stringResource(R.string.home_title),
@@ -237,7 +228,7 @@ private fun TopActions(
     ) {
         FilledTonalButton(
             onClick = onOpenConfig,
-            shape = RoundedCornerShape(18.dp)
+            shape = ComponentShapes.buttonAction
         ) {
             Icon(Icons.Rounded.Download, contentDescription = null)
             Text(
@@ -249,7 +240,7 @@ private fun TopActions(
         IconButton(
             onClick = onOpenSettings,
             modifier = Modifier
-                .size(44.dp)
+                .size(TouchTargets.default)
                 .background(
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     shape = CircleShape
@@ -282,7 +273,7 @@ private fun QuickActions(
                 onManualSetup()
             },
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(18.dp)
+            shape = ComponentShapes.buttonAction
         ) {
             Icon(Icons.Rounded.Shield, contentDescription = null)
             Text(
@@ -297,7 +288,7 @@ private fun QuickActions(
                 onImport()
             },
             modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(18.dp),
+            shape = ComponentShapes.buttonAction,
             enabled = isConfigMissing
         ) {
             Icon(Icons.Rounded.FileCopy, contentDescription = null)
@@ -348,7 +339,7 @@ private fun ProtocolCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(44.dp)
+                                    .size(TouchTargets.default)
                                     .background(
                                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                                         shape = CircleShape
@@ -536,7 +527,7 @@ private fun AboutInfoItem(
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(IconSize.lgPlus)
                 .background(
                     color = iconColor.copy(alpha = 0.12f),
                     shape = CircleShape
@@ -566,13 +557,4 @@ private fun AboutInfoItem(
             )
         }
     }
-}
-
-private fun readTextFromUri(context: android.content.Context, uri: Uri): String {
-    context.contentResolver.openInputStream(uri)?.use { inputStream ->
-        BufferedReader(InputStreamReader(inputStream)).use { reader ->
-            return reader.readText()
-        }
-    }
-    error("Unable to read file")
 }

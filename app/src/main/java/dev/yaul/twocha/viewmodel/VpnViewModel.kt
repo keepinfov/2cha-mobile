@@ -3,6 +3,7 @@ package dev.yaul.twocha.viewmodel
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.net.VpnService
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -15,8 +16,10 @@ import dev.yaul.twocha.ui.theme.ThemeStyle
 import dev.yaul.twocha.vpn.ConnectionState
 import dev.yaul.twocha.vpn.TwochaVpnService
 import dev.yaul.twocha.vpn.VpnStats
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
@@ -145,14 +148,12 @@ class VpnViewModel @Inject constructor(
     }
 
     /**
-     * Import configuration from TOML string
+     * Import configuration from a configuration string (TOML or JSON)
      */
-    fun importConfig(tomlContent: String) {
+    fun importConfig(content: String) {
         viewModelScope.launch {
             try {
-                val config = ConfigParser.parseToml(tomlContent)
-                saveConfig(config)
-                addLog(LogLevel.INFO, "Configuration imported")
+                importConfigContent(content)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to import config", e)
                 _errorMessage.value = "Failed to import configuration: ${e.message}"
@@ -163,11 +164,21 @@ class VpnViewModel @Inject constructor(
     /**
      * Import configuration from file (Context overload for SettingsScreen)
      */
-    @Suppress("UNUSED_PARAMETER")
-    fun importConfig(context: Context) {
-        // TODO: Implement file picker for config import
-        addLog(LogLevel.INFO, "Import config from file not yet implemented")
-        _errorMessage.value = "Import from file not yet implemented"
+    fun importConfig(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val content = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+                        reader.readText()
+                    } ?: throw IllegalArgumentException("Unable to read file")
+                }
+
+                importConfigContent(content)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to import config", e)
+                _errorMessage.value = "Failed to import configuration: ${e.message}"
+            }
+        }
     }
 
     /**
@@ -215,6 +226,27 @@ class VpnViewModel @Inject constructor(
      */
     private fun validateConfig(config: VpnConfig) {
         _configErrors.value = config.validate()
+    }
+
+    private suspend fun importConfigContent(content: String) {
+        val trimmedContent = content.trim()
+        val config = if (trimmedContent.startsWith("{")) {
+            runCatching { ConfigParser.parseJson(trimmedContent) }
+                .getOrElse { ConfigParser.parseToml(trimmedContent) }
+        } else {
+            runCatching { ConfigParser.parseToml(trimmedContent) }
+                .getOrElse { ConfigParser.parseJson(trimmedContent) }
+        }
+
+        _config.value = config
+        validateConfig(config)
+
+        if (_configErrors.value.isEmpty()) {
+            preferencesManager.saveConfigJson(ConfigParser.toJson(config))
+            addLog(LogLevel.INFO, "Configuration imported")
+        } else {
+            throw IllegalArgumentException(_configErrors.value.joinToString(", "))
+        }
     }
 
     /**
