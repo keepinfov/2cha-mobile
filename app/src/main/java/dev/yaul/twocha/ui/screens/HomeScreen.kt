@@ -89,6 +89,8 @@ fun HomeScreen(
     val config by viewModel.config.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val stats by viewModel.stats.collectAsState()
+    val totalBytesReceived by viewModel.totalBytesReceived.collectAsState()
+    val totalBytesSent by viewModel.totalBytesSent.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -177,7 +179,9 @@ fun HomeScreen(
             ProtocolCard(
                 config = config,
                 connectionState = connectionState,
-                stats = stats
+                stats = stats,
+                totalBytesReceived = totalBytesReceived,
+                totalBytesSent = totalBytesSent
             )
         }
     }
@@ -318,14 +322,18 @@ private fun QuickActions(
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onManualSetup()
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
                 shape = ComponentShapes.buttonAction
             ) {
-                Icon(Icons.Rounded.Shield, contentDescription = null)
-                Text(
-                    text = stringResource(R.string.home_action_manual),
-                    modifier = Modifier.padding(start = Spacing.xs)
+                Icon(
+                    imageVector = Icons.Rounded.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(IconSize.md)
                 )
+                Spacer(modifier = Modifier.width(Spacing.xs))
+                Text(text = stringResource(R.string.home_action_manual))
             }
 
             OutlinedButton(
@@ -333,15 +341,19 @@ private fun QuickActions(
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onImport()
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
                 shape = ComponentShapes.buttonAction,
                 enabled = !hasConfig
             ) {
-                Icon(Icons.Rounded.FileCopy, contentDescription = null)
-                Text(
-                    text = stringResource(R.string.home_action_import),
-                    modifier = Modifier.padding(start = Spacing.xs)
+                Icon(
+                    imageVector = Icons.Rounded.Download,
+                    contentDescription = null,
+                    modifier = Modifier.size(IconSize.md)
                 )
+                Spacer(modifier = Modifier.width(Spacing.xs))
+                Text(text = stringResource(R.string.home_action_import))
             }
         }
     }
@@ -351,7 +363,9 @@ private fun QuickActions(
 private fun ProtocolCard(
     config: VpnConfig?,
     connectionState: ConnectionState,
-    stats: VpnStats
+    stats: VpnStats,
+    totalBytesReceived: Long,
+    totalBytesSent: Long
 ) {
     val gradient = Brush.linearGradient(
         colors = listOf(
@@ -467,8 +481,77 @@ private fun ProtocolCard(
                 if (connectionState == ConnectionState.CONNECTED) {
                     ConnectionStats(stats = stats)
                 }
+
+                // Total cumulative statistics (always visible)
+                if (totalBytesReceived > 0 || totalBytesSent > 0) {
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    TotalTrafficStats(
+                        totalBytesReceived = totalBytesReceived,
+                        totalBytesSent = totalBytesSent
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun TotalTrafficStats(
+    totalBytesReceived: Long,
+    totalBytesSent: Long
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        // Section header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(IconSize.sm)
+            )
+            Text(
+                text = "Total Usage",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // Total traffic row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            StatsItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Rounded.Download,
+                label = "Total Received",
+                value = formatBytes(totalBytesReceived),
+                iconColor = MaterialTheme.colorScheme.tertiary
+            )
+            StatsItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Rounded.Upload,
+                label = "Total Sent",
+                value = formatBytes(totalBytesSent),
+                iconColor = MaterialTheme.colorScheme.secondary
+            )
+        }
+
+        // Combined total
+        StatsRow(
+            icon = Icons.Rounded.SwapVert,
+            label = "All Time Total",
+            value = formatBytes(totalBytesReceived + totalBytesSent),
+            iconColor = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
