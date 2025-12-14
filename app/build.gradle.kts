@@ -17,7 +17,7 @@ android {
         applicationId = "dev.yaul.twocha"
         minSdk = 29
         targetSdk = 36
-        versionCode = 31
+        versionCode = 35
         versionName = "0.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
