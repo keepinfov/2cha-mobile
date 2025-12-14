@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -111,7 +110,7 @@ fun ShieldConnectButton(
             .clickable(
                 enabled = !isConnecting,
                 interactionSource = interactionSource,
-                indication = rememberRipple()
+                indication = null
             ) { onToggle() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -147,23 +146,44 @@ fun ShieldConnectButton(
             )
 
             if (serverAddress != null && (isConnected || isConnecting)) {
-                Spacer(modifier = Modifier.height(Spacing.xs))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                androidx.compose.material3.Card(
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    ),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.md)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Public,
-                        contentDescription = null,
-                        modifier = Modifier.size(IconSize.xs),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(Spacing.xxs))
-                    Text(
-                        text = serverAddress,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .size(IconSize.lgPlus)
+                                .background(
+                                    color = statusColor.copy(alpha = 0.12f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Public,
+                                contentDescription = null,
+                                modifier = Modifier.size(IconSize.sm),
+                                tint = statusColor
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(Spacing.sm))
+                        Text(
+                            text = serverAddress,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }
@@ -266,23 +286,44 @@ fun ConnectionCard(
 
             // Server address
             if (serverAddress != null && (isConnected || isConnecting)) {
-                Spacer(modifier = Modifier.height(Spacing.xs))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                androidx.compose.material3.Card(
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    ),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.md)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Public,
-                        contentDescription = null,
-                        modifier = Modifier.size(IconSize.xs),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(Spacing.xxs))
-                    Text(
-                        text = serverAddress,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .size(IconSize.lgPlus)
+                                .background(
+                                    color = statusColor.copy(alpha = 0.12f),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Public,
+                                contentDescription = null,
+                                modifier = Modifier.size(IconSize.sm),
+                                tint = statusColor
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(Spacing.sm))
+                        Text(
+                            text = serverAddress,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
 
