@@ -75,6 +75,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.yaul.twocha.BuildConfig
+import dev.yaul.twocha.protocol.Constants
 import dev.yaul.twocha.ui.theme.IconSize
 import dev.yaul.twocha.ui.theme.Spacing
 import dev.yaul.twocha.ui.theme.ThemeStyle
@@ -326,7 +328,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(Spacing.lg))
 
             Text(
-                text = "2cha VPN v0.6.3 • Protocol v3",
+                text = "2cha VPN v${BuildConfig.VERSION_NAME} • Protocol v${Constants.PROTOCOL_VERSION.toInt()}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -364,8 +366,8 @@ fun SettingsScreen(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(Spacing.xs)
                 ) {
-                    AboutItem("Version", "0.6.3")
-                    AboutItem("Protocol", "v3")
+                    AboutItem("Version", BuildConfig.VERSION_NAME)
+                    AboutItem("Protocol", "v${Constants.PROTOCOL_VERSION.toInt()}")
                     AboutItem("Encryption", "ChaCha20-Poly1305 / AES-256-GCM")
                     AboutItem("License", "MIT")
 

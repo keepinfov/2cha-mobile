@@ -1,13 +1,17 @@
 package dev.yaul.twocha
 
 import android.app.Activity
+import android.content.res.Configuration
 import android.graphics.Color
 import android.net.VpnService
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.ViewCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.yaul.twocha.ui.fragments.ConfigFragment
@@ -35,6 +39,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         setupTransparentStatusBar()
+        updateSystemBarsAppearance()
         applyEdgeToEdgeInsets()
 
         if (savedInstanceState == null) {
@@ -45,6 +50,22 @@ class MainActivity : AppCompatActivity() {
     private fun setupTransparentStatusBar() {
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+    }
+
+    private fun updateSystemBarsAppearance() {
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        val isLightTheme =
+            resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK != Configuration.UI_MODE_NIGHT_YES
+
+        controller.isAppearanceLightStatusBars = isLightTheme
+        controller.isAppearanceLightNavigationBars = isLightTheme
     }
 
     private fun applyEdgeToEdgeInsets() {
@@ -52,7 +73,7 @@ class MainActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(container) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(systemBars.left, systemBars.top, systemBars.right, 0)
+            view.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
             insets
         }
     }
