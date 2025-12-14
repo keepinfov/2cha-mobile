@@ -145,6 +145,9 @@ class TwochaVpnService : VpnService() {
                     config = config
                 )
 
+                // Reset stats with fresh timestamp for new connection
+                _stats.value = VpnStats()
+
                 // Promote notification to connected state once tunnel is ready
                 startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTED))
 
