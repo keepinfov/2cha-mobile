@@ -27,11 +27,11 @@
     <string name="home_config_missing_subtitle">Load a config file to start</string>
     <string name="home_title">Private shield</string>
     <string name="home_subtitle">Quick controls to get your secure tunnel running</string>
-    <string name="home_action_manual">Set up manually</string>
+    <string name="home_action_manual">Edit config</string>
     <string name="home_action_import">Import config</string>
     <string name="home_protocol_version_label">Protocol v%1$d</string>
     <string name="home_cipher_label">Cipher %1$s</string>
-    <string name="home_cipher_fallback">Cipher CHACHA20-POLY1305</string>
+    <string name="home_cipher_fallback">Cipher ChaCha20-Poly1305</string>
     <string name="home_tun_label">Interface %1$s</string>
     <string name="home_mtu_label">MTU %1$d</string>
     <string name="home_transport_udp">Proto UDP</string>
