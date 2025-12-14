@@ -149,7 +149,7 @@ private fun ExpressiveStatItem(
             // Icon with subtle background
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(IconSize.lgPlus)
                     .clip(ComponentShapes.cardSmall)
                     .background(
                         brush = Brush.radialGradient(

@@ -52,7 +52,9 @@ object Radius {
     val xs: Dp = 4.dp
     val sm: Dp = 8.dp
     val md: Dp = 12.dp
+    val mdPlus: Dp = 14.dp
     val lg: Dp = 16.dp
+    val action: Dp = 18.dp
     val xl: Dp = 20.dp
     val xxl: Dp = 24.dp
     val xxxl: Dp = 28.dp
@@ -68,10 +70,17 @@ object IconSize {
     val sm: Dp = 20.dp
     val md: Dp = 24.dp
     val lg: Dp = 32.dp
+    val lgPlus: Dp = 36.dp
     val xl: Dp = 40.dp
     val xxl: Dp = 48.dp
     val display: Dp = 64.dp
     val hero: Dp = 120.dp
+}
+
+object TouchTargets {
+    val compact: Dp = 36.dp
+    val default: Dp = 44.dp
+    val large: Dp = 48.dp
 }
 
 object ButtonSize {
@@ -181,4 +190,5 @@ val LocalSpacing = staticCompositionLocalOf { Spacing }
 val LocalElevation = staticCompositionLocalOf { Elevation }
 val LocalRadius = staticCompositionLocalOf { Radius }
 val LocalIconSize = staticCompositionLocalOf { IconSize }
+val LocalTouchTargets = staticCompositionLocalOf { TouchTargets }
 val LocalDuration = staticCompositionLocalOf { Duration }

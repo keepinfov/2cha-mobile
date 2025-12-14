@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.yaul.twocha.ui.theme.Radius
 import dev.yaul.twocha.viewmodel.LogItem
 import dev.yaul.twocha.viewmodel.LogLevel
 import dev.yaul.twocha.viewmodel.VpnViewModel
@@ -257,7 +258,7 @@ private fun LogEntryCard(
         colors = CardDefaults.cardColors(
             containerColor = color.copy(alpha = 0.1f)
         ),
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(Radius.sm)
     ) {
         Column(
             modifier = Modifier
@@ -272,7 +273,7 @@ private fun LogEntryCard(
                 // Level badge
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(Radius.xs))
                         .background(color.copy(alpha = 0.2f))
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {

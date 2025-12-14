@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import dev.yaul.twocha.BuildConfig
 import dev.yaul.twocha.protocol.Constants
 import dev.yaul.twocha.ui.theme.IconSize
+import dev.yaul.twocha.ui.theme.Radius
 import dev.yaul.twocha.ui.theme.Spacing
 import dev.yaul.twocha.ui.theme.ThemeStyle
 import dev.yaul.twocha.ui.theme.getColorPalette
@@ -460,7 +461,7 @@ private fun SettingsHero() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = Spacing.md),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(Radius.xxl),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         )
@@ -505,12 +506,12 @@ private fun SettingsHero() {
 @Composable
 private fun SettingsBadge(text: String, color: Color) {
     Surface(
-        shape = RoundedCornerShape(50),
+        shape = RoundedCornerShape(Radius.full),
         color = color.copy(alpha = 0.15f),
         modifier = Modifier.border(
             width = 1.dp,
             color = color.copy(alpha = 0.4f),
-            shape = RoundedCornerShape(50)
+            shape = RoundedCornerShape(Radius.full)
         )
     ) {
         Text(
@@ -532,7 +533,7 @@ private fun SettingsGroupCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = Spacing.xs),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(Radius.xl),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(Spacing.md)) {
@@ -577,7 +578,7 @@ private fun SettingRow(
 ) {
     ListItem(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.lg))
             .clickable(onClick = onClick),
         headlineContent = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -678,7 +679,7 @@ private fun ThemeOptionRow(
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(Radius.mdPlus),
         tonalElevation = 2.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -692,7 +693,7 @@ private fun ThemeOptionRow(
             Box(
                 modifier = Modifier
                     .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(Radius.md))
                     .background(palette.primary)
             ) {
                 Column(

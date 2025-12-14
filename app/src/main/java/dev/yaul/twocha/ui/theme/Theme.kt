@@ -247,6 +247,7 @@ fun TwochaTheme(
         LocalElevation provides Elevation,
         LocalRadius provides Radius,
         LocalIconSize provides IconSize,
+        LocalTouchTargets provides TouchTargets,
         LocalDuration provides Duration
     ) {
         MaterialTheme(
@@ -307,6 +308,9 @@ object TwochaThemeAccessor {
 
     val iconSize: IconSize
         @Composable get() = LocalIconSize.current
+
+    val touchTargets: TouchTargets
+        @Composable get() = LocalTouchTargets.current
 
     val duration: Duration
         @Composable get() = LocalDuration.current
