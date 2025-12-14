@@ -74,17 +74,27 @@ class VpnViewModel @Inject constructor(
     val autoConnect: StateFlow<Boolean> = preferencesManager.autoConnect
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    // Combined settings state for UI
-    private val _showNotifications = MutableStateFlow(true)
-    private val _keepAliveOnBattery = MutableStateFlow(true)
+    val showNotifications: StateFlow<Boolean> = preferencesManager.showNotifications
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
+    val keepAliveOnBattery: StateFlow<Boolean> = preferencesManager.keepAliveOnBattery
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    // Total traffic statistics
+    val totalBytesReceived: StateFlow<Long> = preferencesManager.totalBytesReceived
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    val totalBytesSent: StateFlow<Long> = preferencesManager.totalBytesSent
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    // Combined settings state for UI
     val settings: StateFlow<Settings> = combine(
         darkMode,
         dynamicColor,
         themeStyle,
         autoConnect,
-        _showNotifications,
-        _keepAliveOnBattery
+        showNotifications,
+        keepAliveOnBattery
     ) { values: Array<Any> ->
         Settings(
             darkMode = values[0] as Boolean,
@@ -102,6 +112,66 @@ class VpnViewModel @Inject constructor(
 
     init {
         loadConfig()
+        observeConnectionStateForStats()
+    }
+
+    /**
+     * Observe connection state changes to save traffic stats on disconnect
+     */
+    private fun observeConnectionStateForStats() {
+        var wasConnected = false
+        var sessionBytesReceived = 0L
+        var sessionBytesSent = 0L
+
+        viewModelScope.launch {
+            connectionState.collect { state ->
+                when (state) {
+                    ConnectionState.CONNECTED -> {
+                        wasConnected = true
+                        // Reset session counters when newly connected
+                        sessionBytesReceived = 0L
+                        sessionBytesSent = 0L
+                    }
+                    ConnectionState.DISCONNECTED, ConnectionState.ERROR -> {
+                        // Save stats from the session if we were previously connected
+                        if (wasConnected) {
+                            val currentStats = stats.value
+                            val bytesRx = currentStats.bytesReceived - sessionBytesReceived
+                            val bytesTx = currentStats.bytesSent - sessionBytesSent
+
+                            if (bytesRx > 0 || bytesTx > 0) {
+                                preferencesManager.addTrafficStats(bytesRx, bytesTx)
+                                addLog(
+                                    LogLevel.INFO,
+                                    "Session stats saved: ${formatBytes(bytesRx)} received, ${formatBytes(bytesTx)} sent"
+                                )
+                            }
+                            wasConnected = false
+                        }
+                    }
+                    else -> { /* Ignore transition states */ }
+                }
+            }
+        }
+
+        // Also observe stats to track session data
+        viewModelScope.launch {
+            stats.collect { currentStats ->
+                if (connectionState.value == ConnectionState.CONNECTED) {
+                    sessionBytesReceived = currentStats.bytesReceived
+                    sessionBytesSent = currentStats.bytesSent
+                }
+            }
+        }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            bytes < 1024 * 1024 * 1024 -> String.format("%.2f MB", bytes / (1024.0 * 1024.0))
+            else -> String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0))
+        }
     }
 
     /**
@@ -384,14 +454,28 @@ class VpnViewModel @Inject constructor(
      * Update show notifications setting
      */
     fun setShowNotifications(enabled: Boolean) {
-        _showNotifications.value = enabled
+        viewModelScope.launch {
+            preferencesManager.setShowNotifications(enabled)
+        }
     }
 
     /**
      * Update keep alive on battery setting
      */
     fun setKeepAliveOnBattery(enabled: Boolean) {
-        _keepAliveOnBattery.value = enabled
+        viewModelScope.launch {
+            preferencesManager.setKeepAliveOnBattery(enabled)
+        }
+    }
+
+    /**
+     * Reset cumulative traffic statistics
+     */
+    fun resetTrafficStats() {
+        viewModelScope.launch {
+            preferencesManager.resetTrafficStats()
+            addLog(LogLevel.INFO, "Traffic statistics reset")
+        }
     }
 
     /**

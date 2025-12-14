@@ -27,8 +27,11 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.FileCopy
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.SwapVert
+import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -73,6 +76,7 @@ import dev.yaul.twocha.ui.theme.Spacing
 import dev.yaul.twocha.ui.theme.TouchTargets
 import dev.yaul.twocha.viewmodel.VpnViewModel
 import dev.yaul.twocha.vpn.ConnectionState
+import dev.yaul.twocha.vpn.VpnStats
 import kotlinx.coroutines.launch
 
 @Composable
@@ -84,6 +88,9 @@ fun HomeScreen(
     val connectionState by viewModel.connectionState.collectAsState()
     val config by viewModel.config.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val stats by viewModel.stats.collectAsState()
+    val totalBytesReceived by viewModel.totalBytesReceived.collectAsState()
+    val totalBytesSent by viewModel.totalBytesSent.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -146,15 +153,10 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .animateContentSize()
                 .padding(paddingValues)
-                .padding(horizontal = Spacing.lg, vertical = Spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
+                .padding(horizontal = Spacing.md, vertical = Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            TopActions(
-                onOpenConfig = onNavigateToConfig,
-                onOpenSettings = onNavigateToSettings
-            )
-
-            HomeHeader()
+            HomeHeader(onOpenSettings = onNavigateToSettings)
 
             ShieldConnectButton(
                 state = connectionState,
@@ -170,33 +172,40 @@ fun HomeScreen(
                         arrayOf("application/toml", "application/json", "text/plain", "*/*")
                     )
                 },
-                isConfigMissing = hasConfig.not()
+                hasConfig = hasConfig,
+                config = config
             )
 
-            ProtocolCard(config = config, hasConfig = hasConfig, onOpenConfig = onNavigateToConfig)
+            ProtocolCard(
+                config = config,
+                connectionState = connectionState,
+                stats = stats,
+                totalBytesReceived = totalBytesReceived,
+                totalBytesSent = totalBytesSent
+            )
         }
     }
 }
 
 @Composable
-private fun HomeHeader() {
+private fun HomeHeader(onOpenSettings: () -> Unit) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
-        shape = RoundedCornerShape(18.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+                .padding(horizontal = Spacing.md, vertical = Spacing.md),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
             ) {
                 Text(
                     text = stringResource(R.string.home_title),
@@ -212,45 +221,21 @@ private fun HomeHeader() {
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun TopActions(
-    onOpenConfig: () -> Unit,
-    onOpenSettings: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        FilledTonalButton(
-            onClick = onOpenConfig,
-            shape = ComponentShapes.buttonAction
-        ) {
-            Icon(Icons.Rounded.Download, contentDescription = null)
-            Text(
-                text = stringResource(R.string.home_action_manual),
-                modifier = Modifier.padding(start = Spacing.xs)
-            )
-        }
-
-        IconButton(
-            onClick = onOpenSettings,
-            modifier = Modifier
-                .size(TouchTargets.default)
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = CircleShape
+            IconButton(
+                onClick = onOpenSettings,
+                modifier = Modifier
+                    .size(TouchTargets.default)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        shape = CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Settings,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
                 )
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Settings,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
+            }
         }
     }
 }
@@ -259,43 +244,117 @@ private fun TopActions(
 private fun QuickActions(
     onManualSetup: () -> Unit,
     onImport: () -> Unit,
-    isConfigMissing: Boolean
+    hasConfig: Boolean,
+    config: VpnConfig?
 ) {
     val haptics = LocalHapticFeedback.current
 
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
     ) {
-        FilledTonalButton(
-            onClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onManualSetup()
-            },
-            modifier = Modifier.weight(1f),
-            shape = ComponentShapes.buttonAction
+        // Config status indicator
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (hasConfig) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                } else {
+                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                }
+            ),
+            shape = RoundedCornerShape(Radius.lg)
         ) {
-            Icon(Icons.Rounded.Shield, contentDescription = null)
-            Text(
-                text = stringResource(R.string.home_action_manual),
-                modifier = Modifier.padding(start = Spacing.xs)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(Spacing.sm),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    Icon(
+                        imageVector = if (hasConfig) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
+                        contentDescription = null,
+                        tint = if (hasConfig) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
+                        modifier = Modifier.size(IconSize.md)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                        Text(
+                            text = if (hasConfig) {
+                                stringResource(R.string.home_config_ready)
+                            } else {
+                                stringResource(R.string.home_config_missing)
+                            },
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (hasConfig) {
+                                config?.client?.server ?: stringResource(R.string.home_config_ready_subtitle)
+                            } else {
+                                stringResource(R.string.home_config_missing_subtitle)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
         }
 
-        OutlinedButton(
-            onClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onImport()
-            },
-            modifier = Modifier.weight(1f),
-            shape = ComponentShapes.buttonAction,
-            enabled = isConfigMissing
+        // Action buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            Icon(Icons.Rounded.FileCopy, contentDescription = null)
-            Text(
-                text = stringResource(R.string.home_action_import),
-                modifier = Modifier.padding(start = Spacing.xs)
-            )
+            FilledTonalButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onManualSetup()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shape = ComponentShapes.buttonAction
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(IconSize.md)
+                )
+                Spacer(modifier = Modifier.width(Spacing.xs))
+                Text(text = stringResource(R.string.home_action_manual))
+            }
+
+            OutlinedButton(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onImport()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shape = ComponentShapes.buttonAction,
+                enabled = !hasConfig
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Download,
+                    contentDescription = null,
+                    modifier = Modifier.size(IconSize.md)
+                )
+                Spacer(modifier = Modifier.width(Spacing.xs))
+                Text(text = stringResource(R.string.home_action_import))
+            }
         }
     }
 }
@@ -303,8 +362,10 @@ private fun QuickActions(
 @Composable
 private fun ProtocolCard(
     config: VpnConfig?,
-    hasConfig: Boolean,
-    onOpenConfig: () -> Unit
+    connectionState: ConnectionState,
+    stats: VpnStats,
+    totalBytesReceived: Long,
+    totalBytesSent: Long
 ) {
     val gradient = Brush.linearGradient(
         colors = listOf(
@@ -328,9 +389,9 @@ private fun ProtocolCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(gradient)
-                    .padding(Spacing.lg)
+                    .padding(Spacing.md)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -391,13 +452,13 @@ private fun ProtocolCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = Spacing.lg, vertical = Spacing.md),
-                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs)
             ) {
                 // App name and encryption info
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     AboutInfoItem(
                         modifier = Modifier.weight(1f),
@@ -416,79 +477,81 @@ private fun ProtocolCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(Spacing.xs))
+                // Connection statistics
+                if (connectionState == ConnectionState.CONNECTED) {
+                    ConnectionStats(stats = stats)
+                }
 
-                // Config status card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (hasConfig) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                        } else {
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                        }
-                    ),
-                    shape = RoundedCornerShape(Radius.lg)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(Spacing.md),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-                        ) {
-                            Icon(
-                                imageVector = if (hasConfig) Icons.Rounded.CheckCircle else Icons.Rounded.Warning,
-                                contentDescription = null,
-                                tint = if (hasConfig) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.error
-                                },
-                                modifier = Modifier.size(IconSize.md)
-                            )
-                            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
-                                Text(
-                                    text = if (hasConfig) {
-                                        stringResource(R.string.home_config_ready)
-                                    } else {
-                                        stringResource(R.string.home_config_missing)
-                                    },
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = if (hasConfig) {
-                                        config?.client?.server ?: stringResource(R.string.home_config_ready_subtitle)
-                                    } else {
-                                        stringResource(R.string.home_config_missing_subtitle)
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                        IconButton(onClick = onOpenConfig) {
-                            Icon(
-                                Icons.Rounded.Edit,
-                                contentDescription = null,
-                                tint = if (hasConfig) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.error
-                                }
-                            )
-                        }
-                    }
+                // Total cumulative statistics (always visible)
+                if (totalBytesReceived > 0 || totalBytesSent > 0) {
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    TotalTrafficStats(
+                        totalBytesReceived = totalBytesReceived,
+                        totalBytesSent = totalBytesSent
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TotalTrafficStats(
+    totalBytesReceived: Long,
+    totalBytesSent: Long
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        // Section header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(IconSize.sm)
+            )
+            Text(
+                text = "Total Usage",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // Total traffic row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            StatsItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Rounded.Download,
+                label = "Total Received",
+                value = formatBytes(totalBytesReceived),
+                iconColor = MaterialTheme.colorScheme.tertiary
+            )
+            StatsItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Rounded.Upload,
+                label = "Total Sent",
+                value = formatBytes(totalBytesSent),
+                iconColor = MaterialTheme.colorScheme.secondary
+            )
+        }
+
+        // Combined total
+        StatsRow(
+            icon = Icons.Rounded.SwapVert,
+            label = "All Time Total",
+            value = formatBytes(totalBytesReceived + totalBytesSent),
+            iconColor = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -556,5 +619,161 @@ private fun AboutInfoItem(
                 overflow = TextOverflow.Ellipsis
             )
         }
+    }
+}
+
+@Composable
+private fun ConnectionStats(stats: VpnStats) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        // Connection duration
+        StatsRow(
+            icon = Icons.Rounded.Schedule,
+            label = "Connected",
+            value = formatDuration(stats.duration),
+            iconColor = MaterialTheme.colorScheme.primary
+        )
+
+        // Traffic statistics
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+        ) {
+            StatsItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Rounded.Download,
+                label = "Received",
+                value = formatBytes(stats.bytesReceived),
+                iconColor = MaterialTheme.colorScheme.tertiary
+            )
+            StatsItem(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Rounded.Upload,
+                label = "Sent",
+                value = formatBytes(stats.bytesSent),
+                iconColor = MaterialTheme.colorScheme.secondary
+            )
+        }
+
+        // Total traffic
+        StatsRow(
+            icon = Icons.Rounded.SwapVert,
+            label = "Total Traffic",
+            value = formatBytes(stats.bytesReceived + stats.bytesSent),
+            iconColor = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+private fun StatsRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String,
+    iconColor: Color
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        ),
+        shape = RoundedCornerShape(Radius.md)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.sm),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(IconSize.md)
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatsItem(
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String,
+    iconColor: Color
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        ),
+        shape = RoundedCornerShape(Radius.md)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.sm),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(IconSize.md)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+private fun formatBytes(bytes: Long): String {
+    return when {
+        bytes < 1024 -> "$bytes B"
+        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+        bytes < 1024 * 1024 * 1024 -> String.format("%.2f MB", bytes / (1024.0 * 1024.0))
+        else -> String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0))
+    }
+}
+
+private fun formatDuration(millis: Long): String {
+    val seconds = millis / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+
+    return when {
+        hours > 0 -> String.format("%d:%02d:%02d", hours, minutes % 60, seconds % 60)
+        minutes > 0 -> String.format("%d:%02d", minutes, seconds % 60)
+        else -> "${seconds}s"
     }
 }

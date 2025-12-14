@@ -15,10 +15,10 @@ android {
 
     defaultConfig {
         applicationId = "dev.yaul.twocha"
-        minSdk = 28
+        minSdk = 29
         targetSdk = 36
-        versionCode = 26
-        versionName = "0.1.1"
+        versionCode = 35
+        versionName = "0.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -35,11 +35,25 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Additional optimizations for smaller APK
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
         }
         debug {
             isDebuggable = true
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
+        }
+    }
+
+    // Split APKs by ABI to reduce individual APK size
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+            isUniversalApk = true
         }
     }
 
@@ -56,6 +70,17 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/LICENSE.txt"
+            excludes += "/META-INF/license.txt"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/NOTICE.txt"
+            excludes += "/META-INF/notice.txt"
+            excludes += "/META-INF/*.kotlin_module"
+        }
+        jniLibs {
+            useLegacyPackaging = false
         }
     }
 }
@@ -77,6 +102,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    // Material Icons Extended is large (~3MB) - consider replacing with core icons or custom drawables
+    // For now keeping it but R8 will remove unused icons with optimized ProGuard rules
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.animation)
 

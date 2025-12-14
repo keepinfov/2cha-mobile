@@ -31,6 +31,10 @@ class PreferencesManager @Inject constructor(
         private val KEY_AUTO_RECONNECT = booleanPreferencesKey("auto_reconnect")
         private val KEY_LAST_SERVER = stringPreferencesKey("last_server")
         private val KEY_THEME_STYLE = stringPreferencesKey("theme_style")
+        private val KEY_SHOW_NOTIFICATIONS = booleanPreferencesKey("show_notifications")
+        private val KEY_KEEP_ALIVE_ON_BATTERY = booleanPreferencesKey("keep_alive_on_battery")
+        private val KEY_TOTAL_BYTES_RECEIVED = longPreferencesKey("total_bytes_received")
+        private val KEY_TOTAL_BYTES_SENT = longPreferencesKey("total_bytes_sent")
     }
 
     // Dark mode preference
@@ -169,6 +173,85 @@ class PreferencesManager @Inject constructor(
     suspend fun setLastServer(server: String) {
         dataStore.edit { preferences ->
             preferences[KEY_LAST_SERVER] = server
+        }
+    }
+
+    // Show notifications preference
+    val showNotifications: Flow<Boolean> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[KEY_SHOW_NOTIFICATIONS] ?: true
+        }
+
+    suspend fun setShowNotifications(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_SHOW_NOTIFICATIONS] = enabled
+        }
+    }
+
+    // Keep alive on battery preference
+    val keepAliveOnBattery: Flow<Boolean> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[KEY_KEEP_ALIVE_ON_BATTERY] ?: true
+        }
+
+    suspend fun setKeepAliveOnBattery(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_KEEP_ALIVE_ON_BATTERY] = enabled
+        }
+    }
+
+    // Total traffic statistics
+    val totalBytesReceived: Flow<Long> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[KEY_TOTAL_BYTES_RECEIVED] ?: 0L
+        }
+
+    val totalBytesSent: Flow<Long> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[KEY_TOTAL_BYTES_SENT] ?: 0L
+        }
+
+    suspend fun addTrafficStats(bytesReceived: Long, bytesSent: Long) {
+        dataStore.edit { preferences ->
+            val currentReceived = preferences[KEY_TOTAL_BYTES_RECEIVED] ?: 0L
+            val currentSent = preferences[KEY_TOTAL_BYTES_SENT] ?: 0L
+            preferences[KEY_TOTAL_BYTES_RECEIVED] = currentReceived + bytesReceived
+            preferences[KEY_TOTAL_BYTES_SENT] = currentSent + bytesSent
+        }
+    }
+
+    suspend fun resetTrafficStats() {
+        dataStore.edit { preferences ->
+            preferences[KEY_TOTAL_BYTES_RECEIVED] = 0L
+            preferences[KEY_TOTAL_BYTES_SENT] = 0L
         }
     }
 

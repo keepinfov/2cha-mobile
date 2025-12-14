@@ -15,12 +15,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowInsetsControllerCompat
@@ -28,12 +22,11 @@ import androidx.core.view.WindowInsetsControllerCompat
 /**
  * Material 3 Expressive Theme System
  *
- * Developer-friendly theme with:
+ * Features:
  * - Easy theme switching via ThemeStyle enum
  * - Multiple built-in themes (Cyber, Ocean, Violet, OLED, Light, Warm)
- * - Debug mode for inspecting colors
- * - Dynamic color support (Material You)
- * - Composition locals for easy access to design tokens
+ * - Dynamic color support (Material You on Android 12+)
+ * - Automatic edge-to-edge system bars configuration
  */
 
 // =============================================================================
@@ -136,46 +129,6 @@ private fun TwochaColorPalette.toColorScheme(): ColorScheme {
 }
 
 // =============================================================================
-// THEME STATE HOLDER
-// =============================================================================
-
-/**
- * Holds the current theme state for easy access throughout the app
- */
-class TwochaThemeState(
-    initialThemeStyle: ThemeStyle = ThemeStyle.CYBER,
-    initialDynamicColor: Boolean = false
-) {
-    var themeStyle by mutableStateOf(initialThemeStyle)
-    var dynamicColor by mutableStateOf(initialDynamicColor)
-
-    val isDark: Boolean
-        get() = themeStyle.isDark()
-
-    fun toggleDarkMode() {
-        themeStyle = if (isDark) ThemeStyle.LIGHT else ThemeStyle.CYBER
-    }
-
-    fun setTheme(style: ThemeStyle) {
-        themeStyle = style
-    }
-}
-
-@Composable
-fun rememberTwochaThemeState(
-    initialThemeStyle: ThemeStyle = ThemeStyle.CYBER,
-    initialDynamicColor: Boolean = false
-): TwochaThemeState {
-    return remember {
-        TwochaThemeState(initialThemeStyle, initialDynamicColor)
-    }
-}
-
-val LocalThemeState = staticCompositionLocalOf<TwochaThemeState> {
-    error("No TwochaThemeState provided")
-}
-
-// =============================================================================
 // MAIN THEME COMPOSABLE
 // =============================================================================
 
@@ -218,11 +171,6 @@ fun TwochaTheme(
         getColorPalette(themeStyle)
     }
 
-    // Create theme state
-    val themeState = remember(themeStyle, dynamicColor) {
-        TwochaThemeState(themeStyle, dynamicColor)
-    }
-
     // Configure system bars appearance
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -239,7 +187,6 @@ fun TwochaTheme(
     // Provide all design tokens via CompositionLocals
     CompositionLocalProvider(
         LocalTwochaColors provides twochaColors,
-        LocalThemeState provides themeState,
         LocalExpressiveShapes provides ExpressiveShapes(),
         LocalSpacing provides Spacing,
         LocalElevation provides Elevation,
@@ -275,68 +222,8 @@ fun TwochaTheme(
 }
 
 // =============================================================================
-// THEME ACCESSOR OBJECT
+// HELPER EXTENSIONS
 // =============================================================================
-
-/**
- * Easy access to theme values from anywhere in the app
- *
- * Usage:
- * ```kotlin
- * val primary = TwochaTheme.colors.primary
- * val cardShape = TwochaTheme.shapes.card
- * val spacing = TwochaTheme.spacing.md
- * ```
- */
-object TwochaThemeAccessor {
-    val colors: TwochaColorPalette
-        @Composable get() = LocalTwochaColors.current
-
-    val shapes: ExpressiveShapes
-        @Composable get() = LocalExpressiveShapes.current
-
-    val spacing: Spacing
-        @Composable get() = LocalSpacing.current
-
-    val elevation: Elevation
-        @Composable get() = LocalElevation.current
-
-    val radius: Radius
-        @Composable get() = LocalRadius.current
-
-    val iconSize: IconSize
-        @Composable get() = LocalIconSize.current
-
-    val touchTargets: TouchTargets
-        @Composable get() = LocalTouchTargets.current
-
-    val duration: Duration
-        @Composable get() = LocalDuration.current
-
-    val themeState: TwochaThemeState
-        @Composable get() = LocalThemeState.current
-}
-
-// Convenient alias
-val Theme: TwochaThemeAccessor = TwochaThemeAccessor
-
-// =============================================================================
-// PREVIEW THEMES
-// =============================================================================
-
-/**
- * Preview helper for displaying content in all theme variants
- */
-@Composable
-fun PreviewAllThemes(
-    content: @Composable () -> Unit
-) {
-    ThemeStyle.entries.forEach { style ->
-        TwochaTheme(themeStyle = style) {
-            content()
-        }
-    }
-}
 
 private fun View.findActivity(): Activity? = context.findActivity()
 
@@ -344,19 +231,4 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
-}
-
-/**
- * Preview helper for light/dark comparison
- */
-@Composable
-fun PreviewLightDark(
-    content: @Composable () -> Unit
-) {
-    TwochaTheme(themeStyle = ThemeStyle.LIGHT) {
-        content()
-    }
-    TwochaTheme(themeStyle = ThemeStyle.CYBER) {
-        content()
-    }
 }
