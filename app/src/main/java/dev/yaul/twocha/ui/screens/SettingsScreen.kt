@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.FileUpload
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.AlertDialog
@@ -290,6 +291,27 @@ fun SettingsScreen(
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW).apply {
                             data = Uri.parse("https://github.com/keepinfov/2cha")
+                        }
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        runCatching { context.startActivity(intent) }
+                            .onFailure {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    }
+                )
+
+                SettingRow(
+                    icon = Icons.Rounded.PhoneAndroid,
+                    title = "Mobile app source",
+                    subtitle = "See the Android client on GitHub",
+                    trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("https://github.com/keepinfov/2cha-mobile")
                         }
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         runCatching { context.startActivity(intent) }
