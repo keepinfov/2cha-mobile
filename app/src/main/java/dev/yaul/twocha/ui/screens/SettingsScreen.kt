@@ -86,6 +86,8 @@ import dev.yaul.twocha.ui.theme.ThemeStyle
 import dev.yaul.twocha.ui.theme.getColorPalette
 import dev.yaul.twocha.ui.theme.isDark
 import dev.yaul.twocha.viewmodel.VpnViewModel
+import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 
 /**
  * Settings Screen - Reimagined Material 3 layout
@@ -302,14 +304,14 @@ fun SettingsScreen(
                     trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://github.com/keepinfov/2cha")
+                            data = "https://github.com/keepinfov/2cha".toUri()
                         }
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         runCatching { context.startActivity(intent) }
                             .onFailure {
                                 Toast.makeText(
                                     context,
-                                    context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                    stringResource(dev.yaul.twocha.R.string.settings_link_error),
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -323,14 +325,14 @@ fun SettingsScreen(
                     trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://github.com/keepinfov/2cha-mobile")
+                            data = "https://github.com/keepinfov/2cha-mobile".toUri()
                         }
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         runCatching { context.startActivity(intent) }
                             .onFailure {
                                 Toast.makeText(
                                     context,
-                                    context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                    stringResource(dev.yaul.twocha.R.string.settings_link_error),
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -344,14 +346,14 @@ fun SettingsScreen(
                     trailingIcon = Icons.AutoMirrored.Rounded.OpenInNew,
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://github.com/keepinfov/2cha/issues")
+                            data = "https://github.com/keepinfov/2cha/issues".toUri()
                         }
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         runCatching { context.startActivity(intent) }
                             .onFailure {
                                 Toast.makeText(
                                     context,
-                                    context.getString(dev.yaul.twocha.R.string.settings_link_error),
+                                    stringResource(dev.yaul.twocha.R.string.settings_link_error),
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -585,7 +587,7 @@ private fun SettingRow(
     trailingIcon: ImageVector? = null,
     supporting: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    onClick: () -> Unit
+    onClick: @Composable () -> Unit
 ) {
     ListItem(
         modifier = modifier
