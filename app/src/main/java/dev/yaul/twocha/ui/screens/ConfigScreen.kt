@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -80,8 +81,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -124,8 +127,9 @@ fun ConfigScreen(
     var showSaveSheet by remember { mutableStateOf(false) }
     val saveSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Clear focus when keyboard is hidden
+    // Focus and keyboard management
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
     val imeInsets = WindowInsets.ime
     val isKeyboardVisible by remember {
@@ -134,6 +138,7 @@ fun ConfigScreen(
         }
     }
 
+    // Clear focus when keyboard is hidden
     LaunchedEffect(isKeyboardVisible) {
         if (!isKeyboardVisible) {
             focusManager.clearFocus()
@@ -171,6 +176,12 @@ fun ConfigScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    })
+                }
                 .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm)
