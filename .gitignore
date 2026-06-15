@@ -15,3 +15,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# direnv
+.direnv
+
+# Generated native artifacts (built from the native/2cha submodule by cargo-ndk)
+/app/src/main/jniLibs/
+/app/src/main/java/uniffi/
