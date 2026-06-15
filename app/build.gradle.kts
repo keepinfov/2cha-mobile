@@ -17,8 +17,8 @@ android {
         applicationId = "dev.yaul.twocha"
         minSdk = 29
         targetSdk = 36
-        versionCode = 35
-        versionName = "0.1.2"
+        versionCode = 36
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
