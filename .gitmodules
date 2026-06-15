@@ -1,0 +1,3 @@
+[submodule "native/2cha"]
+	path = native/2cha
+	url = git@github.com:keepinfov/2cha.git

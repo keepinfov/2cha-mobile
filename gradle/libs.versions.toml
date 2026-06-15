@@ -3,12 +3,13 @@ accompanistPermissions = "0.37.3"
 accompanistSystemuicontroller = "0.36.0"
 agp = "8.13.2"
 androidxComposeBom = "2025.12.00"
-bcprovJdk18on = "1.83"
 coreSplashscreen = "1.2.0"
 datastorePreferences = "1.2.0"
+securityCrypto = "1.1.0-alpha06"
 fragmentKtx = "1.8.9"
 hiltCompiler = "2.57.2"
 hiltAndroid = "2.57.2"
+jna = "5.19.0"
 hiltNavigationCompose = "1.3.0"
 kotlin = "2.2.21"
 coreKtx = "1.17.0"
@@ -33,6 +34,7 @@ androidx-compose-material-icons-extended = { module = "androidx.compose.material
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragmentKtx" }
 androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelCompose" }
@@ -44,9 +46,9 @@ androidx-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 androidx-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 androidx-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 androidx-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
-bcprov-jdk18on = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bcprovJdk18on" }
 compose-bom-v20240200 = { module = "androidx.compose:compose-bom", version.ref = "androidxComposeBom" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hiltAndroid" }
+jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hiltCompiler" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

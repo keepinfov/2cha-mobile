@@ -12,19 +12,22 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import dev.yaul.twocha.MainActivity
 import dev.yaul.twocha.R
+import dev.yaul.twocha.config.ConfigParser
 import dev.yaul.twocha.config.VpnConfig
-import dev.yaul.twocha.crypto.AeadCipher
-import dev.yaul.twocha.crypto.CipherFactory
-import dev.yaul.twocha.protocol.Constants
-import kotlinx.coroutines.*
+import dev.yaul.twocha.security.KeyManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.net.InetSocketAddress
+import uniffi.twocha_mobile.SocketProtector
+import uniffi.twocha_mobile.TwochaTunnel
+import uniffi.twocha_mobile.initLogging
 
 /**
- * 2cha VPN Service
+ * 2cha v4 VPN Service.
  *
- * Handles VPN tunnel creation and packet forwarding
+ * Owns the data-plane setup (VpnService.Builder: addresses/routes/DNS/MTU) and
+ * delegates the protocol — Noise_IK handshake, obfuscation transport, packet
+ * pump — to the native engine via [TwochaTunnel]. The engine's `start` blocks,
+ * so it runs on a dedicated thread; `stop` flips a shared atomic in Rust.
  */
 class TwochaVpnService : VpnService() {
 
@@ -33,14 +36,10 @@ class TwochaVpnService : VpnService() {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "twocha_vpn_channel"
 
-        // Actions
         const val ACTION_CONNECT = "dev.yaul.twocha.CONNECT"
         const val ACTION_DISCONNECT = "dev.yaul.twocha.DISCONNECT"
-
-        // Extras
         const val EXTRA_CONFIG_JSON = "config_json"
 
-        // Service state
         private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
         val connectionState: StateFlow<ConnectionState> = _connectionState
 
@@ -52,19 +51,18 @@ class TwochaVpnService : VpnService() {
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
-    private var connection: VpnConnection? = null
-    private var serviceJob: Job? = null
-    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var tunnel: TwochaTunnel? = null
+    private var engineThread: Thread? = null
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Service created")
+        initLogging()
         createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand: ${intent?.action}")
-
         when (intent?.action) {
             ACTION_CONNECT -> {
                 val configJson = intent.getStringExtra(EXTRA_CONFIG_JSON)
@@ -75,18 +73,14 @@ class TwochaVpnService : VpnService() {
                     stopSelf()
                 }
             }
-            ACTION_DISCONNECT -> {
-                stopVpn()
-            }
+            ACTION_DISCONNECT -> stopVpn()
         }
-
         return START_STICKY
     }
 
     override fun onDestroy() {
         Log.d(TAG, "Service destroyed")
         stopVpn()
-        serviceScope.cancel()
         super.onDestroy()
     }
 
@@ -102,210 +96,146 @@ class TwochaVpnService : VpnService() {
             return
         }
 
-        serviceJob = serviceScope.launch {
+        val config: VpnConfig
+        val configToml: String
+        val tunFd: ParcelFileDescriptor
+        val privateKeyB64: String
+        try {
+            config = ConfigParser.parseJson(configJson)
+            val errors = config.validate()
+            require(errors.isEmpty()) { "Invalid config: ${errors.joinToString(", ")}" }
+
+            configToml = config.toToml()
+            privateKeyB64 = KeyManager(this).privateKeyB64()
+
+            _connectionState.value = ConnectionState.CONNECTING
+            isRunning = true
+            startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTING))
+
+            tunFd = establishVpnInterface(config)
+                ?: throw IllegalStateException("Failed to establish VPN interface")
+            vpnInterface = tunFd
+        } catch (e: Exception) {
+            Log.e(TAG, "VPN setup failed", e)
+            _connectionState.value = ConnectionState.ERROR
+            startForeground(NOTIFICATION_ID, createNotification(ConnectionState.ERROR))
+            cleanup(preserveError = true)
+            return
+        }
+
+        val protector = object : SocketProtector {
+            override fun protect(fd: Int): Boolean = this@TwochaVpnService.protect(fd)
+        }
+
+        val engine = TwochaTunnel()
+        tunnel = engine
+
+        // `start` transfers fd ownership to the engine and blocks until `stop`.
+        val detachedFd = tunFd.detachFd()
+
+        engineThread = Thread({
             try {
-                _connectionState.value = ConnectionState.CONNECTING
-                isRunning = true
-
-                // Post foreground notification immediately to satisfy Android's 5s requirement
-                startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTING))
-
-                // Parse config
-                val config = dev.yaul.twocha.config.ConfigParser.parseJson(configJson)
-
-                // Validate config
-                val errors = config.validate()
-                if (errors.isNotEmpty()) {
-                    throw IllegalArgumentException("Invalid config: ${errors.joinToString(", ")}")
-                }
-
-                // Create cipher
-                val cipher = CipherFactory.create(
-                    config.getCipherSuite().toCryptoSuite(),
-                    config.getKeyBytes()
-                )
-
-                // Establish VPN interface
-                val tunFd = establishVpnInterface(config)
-                vpnInterface = tunFd
-
-                // Parse server address
-                val (host, port) = config.parseServerAddress()
-                val serverAddress = resolveServerAddress(host, port, config.client.preferIpv6)
-
-                // Create UDP socket
-                val udpSocket = VpnUdpSocket(this@TwochaVpnService)
-                udpSocket.connect(serverAddress)
-
-                // Create connection handler
-                connection = VpnConnection(
-                    tunFd = tunFd,
-                    udpSocket = udpSocket,
-                    cipher = cipher,
-                    config = config
-                )
-
-                // Reset stats with fresh timestamp for new connection
                 _stats.value = VpnStats()
-
-                // Promote notification to connected state once tunnel is ready
                 startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTED))
-
                 _connectionState.value = ConnectionState.CONNECTED
-                Log.i(TAG, "VPN connected to $serverAddress")
+                Log.i(TAG, "VPN engine starting (${config.client.transport.wire})")
 
-                // Run the VPN connection loop
-                connection?.run(
-                    onStatsUpdate = { bytesRx, bytesTx, packetsRx, packetsTx ->
-                        _stats.value = VpnStats(
-                            bytesReceived = bytesRx,
-                            bytesSent = bytesTx,
-                            packetsReceived = packetsRx,
-                            packetsSent = packetsTx,
-                            connectedAt = _stats.value.connectedAt
-                        )
-                    }
-                )
-
-            } catch (e: CancellationException) {
-                Log.d(TAG, "VPN job cancelled")
+                engine.start(configToml, privateKeyB64, detachedFd, protector)
+                Log.i(TAG, "VPN engine returned")
             } catch (e: Exception) {
-                Log.e(TAG, "VPN error", e)
+                Log.e(TAG, "VPN engine error", e)
                 _connectionState.value = ConnectionState.ERROR
                 startForeground(NOTIFICATION_ID, createNotification(ConnectionState.ERROR))
             } finally {
-                val keepErrorState = _connectionState.value == ConnectionState.ERROR
-                cleanup(preserveError = keepErrorState)
+                val keepError = _connectionState.value == ConnectionState.ERROR
+                cleanup(preserveError = keepError)
             }
-        }
+        }, "twocha-engine").also { it.start() }
     }
 
     private fun stopVpn() {
         Log.d(TAG, "Stopping VPN")
         _connectionState.value = ConnectionState.DISCONNECTING
-
-        serviceJob?.cancel()
-        connection?.stop()
+        tunnel?.stop()
+        engineThread?.join(2000)
         cleanup(preserveError = false)
-
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     private fun cleanup(preserveError: Boolean) {
-        connection?.cleanup()
-        connection = null
-
+        tunnel = null
+        engineThread = null
+        // The engine owns the detached fd; only close ours if it was never handed off.
         vpnInterface?.close()
         vpnInterface = null
-
         isRunning = false
         if (!preserveError || _connectionState.value != ConnectionState.ERROR) {
             _connectionState.value = ConnectionState.DISCONNECTED
         }
         _stats.value = VpnStats()
-
         Log.d(TAG, "VPN cleaned up")
     }
 
-    private fun establishVpnInterface(config: VpnConfig): ParcelFileDescriptor {
+    private fun establishVpnInterface(config: VpnConfig): ParcelFileDescriptor? {
         val builder = Builder()
             .setSession("2cha VPN")
             .setMtu(config.tun.mtu)
 
-        // IPv4 configuration
         if (config.ipv4.enable && !config.ipv4.address.isNullOrBlank()) {
             builder.addAddress(config.ipv4.address, config.ipv4.prefix)
-
             if (config.ipv4.routeAll) {
-                // Route all IPv4 traffic
                 builder.addRoute("0.0.0.0", 0)
             } else {
-                // Add specific routes
                 config.ipv4.routes.forEach { route ->
                     val parts = route.split("/")
-                    if (parts.size == 2) {
-                        builder.addRoute(parts[0], parts[1].toInt())
-                    }
+                    if (parts.size == 2) builder.addRoute(parts[0], parts[1].toInt())
                 }
-                // Always add VPN subnet route
                 val subnet = config.ipv4.address.substringBeforeLast(".") + ".0"
                 builder.addRoute(subnet, config.ipv4.prefix)
             }
         }
 
-        // IPv6 configuration
         if (config.ipv6.enable && !config.ipv6.address.isNullOrBlank()) {
             builder.addAddress(config.ipv6.address, config.ipv6.prefix)
-
             if (config.ipv6.routeAll) {
                 builder.addRoute("::", 0)
             } else {
                 config.ipv6.routes.forEach { route ->
                     val parts = route.split("/")
-                    if (parts.size == 2) {
-                        builder.addRoute(parts[0], parts[1].toInt())
-                    }
+                    if (parts.size == 2) builder.addRoute(parts[0], parts[1].toInt())
                 }
             }
         }
 
-        // DNS servers
         config.dns.serversV4.forEach { builder.addDnsServer(it) }
         config.dns.serversV6.forEach { builder.addDnsServer(it) }
-
-        // Search domains
         config.dns.search.forEach { builder.addSearchDomain(it) }
 
-        // Exclude IPs from VPN (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             config.ipv4.excludeIps.forEach { route ->
                 val parts = route.split("/")
                 if (parts.size == 2) {
-                    val ipPrefix = android.net.IpPrefix(
-                        java.net.InetAddress.getByName(parts[0]),
-                        parts[1].toInt()
+                    builder.excludeRoute(
+                        android.net.IpPrefix(
+                            java.net.InetAddress.getByName(parts[0]),
+                            parts[1].toInt()
+                        )
                     )
-                    builder.excludeRoute(ipPrefix)
                 }
             }
         }
 
-        // Don't route this app's traffic through VPN
+        // Keep this app (and the engine's carrier sockets) out of the tunnel so
+        // server-address resolution and the handshake reach the network.
         try {
             builder.addDisallowedApplication(packageName)
         } catch (e: Exception) {
             Log.w(TAG, "Could not exclude self from VPN", e)
         }
 
-        // Allow metered network usage
         builder.setMetered(false)
-
         return builder.establish()
-            ?: throw IllegalStateException("Failed to establish VPN interface")
-    }
-
-    private suspend fun resolveServerAddress(
-        host: String,
-        port: Int,
-        preferIpv6: Boolean
-    ): InetSocketAddress = withContext(Dispatchers.IO) {
-        try {
-            val addresses = java.net.InetAddress.getAllByName(host)
-
-            val selected = if (preferIpv6) {
-                addresses.firstOrNull { it is java.net.Inet6Address }
-                    ?: addresses.firstOrNull { it is java.net.Inet4Address }
-            } else {
-                addresses.firstOrNull { it is java.net.Inet4Address }
-                    ?: addresses.firstOrNull { it is java.net.Inet6Address }
-            }
-
-            selected?.let { InetSocketAddress(it, port) }
-                ?: throw IllegalArgumentException("Could not resolve server address: $host")
-        } catch (e: Exception) {
-            throw IllegalArgumentException("Failed to resolve server: $host", e)
-        }
     }
 
     private fun createNotificationChannel() {
@@ -318,35 +248,26 @@ class TwochaVpnService : VpnService() {
                 description = getString(R.string.notification_channel_desc)
                 setShowBadge(false)
             }
-
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
 
     private fun createNotification(state: ConnectionState): Notification {
         val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
+            this, 0,
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-
         val disconnectIntent = PendingIntent.getService(
-            this,
-            1,
-            Intent(this, TwochaVpnService::class.java).apply {
-                action = ACTION_DISCONNECT
-            },
+            this, 1,
+            Intent(this, TwochaVpnService::class.java).apply { action = ACTION_DISCONNECT },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-
         val title = when (state) {
             ConnectionState.CONNECTED -> getString(R.string.notification_connected)
             ConnectionState.CONNECTING -> getString(R.string.notification_connecting)
             else -> getString(R.string.app_name)
         }
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(getString(R.string.notification_tap_disconnect))
@@ -364,9 +285,7 @@ class TwochaVpnService : VpnService() {
     }
 }
 
-/**
- * VPN connection states
- */
+/** VPN connection states. */
 enum class ConnectionState {
     DISCONNECTED,
     CONNECTING,
@@ -376,7 +295,9 @@ enum class ConnectionState {
 }
 
 /**
- * VPN traffic statistics
+ * VPN traffic statistics. Live byte/packet counters are not yet surfaced by the
+ * native engine (run_mobile blocks without a stats callback); only duration is
+ * meaningful until a stats hook is added to the FFI.
  */
 data class VpnStats(
     val bytesReceived: Long = 0,

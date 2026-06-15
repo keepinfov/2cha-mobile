@@ -1,95 +1,135 @@
 package dev.yaul.twocha.config
 
-import dev.yaul.twocha.crypto.CryptoUtils
-import dev.yaul.twocha.protocol.Constants
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Complete VPN configuration
+ * 2cha v4 client configuration.
+ *
+ * Mirrors the Rust `ClientConfig` schema (twocha-core::config::client) so it can
+ * be serialized to TOML and handed to the native engine via
+ * `TwochaTunnel.start(configToml, ...)`. The client's own X25519 private key is
+ * NOT part of this config — it is generated/stored on device and passed to the
+ * engine separately; the engine never reads `crypto.private_key_file`, but the
+ * Rust deserializer requires the field to be present, so [toToml] emits a
+ * placeholder for it.
  */
 @Serializable
 data class VpnConfig(
     val client: ClientSection,
+    val tls: TlsSection = TlsSection(),
     val tun: TunSection = TunSection(),
     val crypto: CryptoSection,
     val ipv4: Ipv4Section = Ipv4Section(),
     val ipv6: Ipv6Section = Ipv6Section(),
-    val dns: DnsSection = DnsSection(),
-    val performance: PerformanceSection = PerformanceSection(),
-    val timeouts: TimeoutsSection = TimeoutsSection(),
-    val logging: LoggingSection = LoggingSection()
+    val dns: DnsSection = DnsSection()
 ) {
-    /**
-     * Get the encryption key as bytes
-     */
-    fun getKeyBytes(): ByteArray {
-        val hexKey = crypto.key ?: throw IllegalStateException("No encryption key configured")
-        return CryptoUtils.hexToBytes(hexKey.trim())
-    }
-
-    /**
-     * Get the cipher suite
-     */
-    fun getCipherSuite(): CipherSuite {
-        return crypto.cipher
-    }
-
-    /**
-     * Parse server address into host and port
-     */
+    /** Split `host:port` (or bare host) into a host/port pair. */
     fun parseServerAddress(): Pair<String, Int> {
-        val parts = client.server.split(":")
-        return if (parts.size == 2) {
-            Pair(parts[0], parts[1].toIntOrNull() ?: Constants.DEFAULT_PORT)
+        val idx = client.server.lastIndexOf(':')
+        return if (idx > 0 && idx < client.server.length - 1) {
+            val host = client.server.substring(0, idx)
+            val port = client.server.substring(idx + 1).toIntOrNull() ?: DEFAULT_PORT
+            host to port
         } else {
-            Pair(client.server, Constants.DEFAULT_PORT)
+            client.server to DEFAULT_PORT
         }
     }
 
-    /**
-     * Validate the configuration
-     */
     fun validate(): List<String> {
         val errors = mutableListOf<String>()
 
         if (client.server.isBlank()) {
             errors.add("Server address is required")
         }
-
-        if (crypto.key.isNullOrBlank()) {
-            errors.add("Encryption key is required")
-        } else if (crypto.key.length != 64) {
-            errors.add("Encryption key must be 64 hex characters")
-        } else {
-            try {
-                CryptoUtils.hexToBytes(crypto.key)
-            } catch (e: Exception) {
-                errors.add("Encryption key contains invalid hex characters")
-            }
+        if (crypto.serverPublicKey.isBlank()) {
+            errors.add("Server public key is required")
         }
-
+        if (client.transport == Transport.TLS && tls.sni.isBlank()) {
+            errors.add("TLS transport requires an SNI host")
+        }
         if (ipv4.enable && ipv4.address.isNullOrBlank()) {
             errors.add("IPv4 address is required when IPv4 is enabled")
         }
-
         if (ipv6.enable && ipv6.address.isNullOrBlank()) {
             errors.add("IPv6 address is required when IPv6 is enabled")
         }
-
         if (!ipv4.enable && !ipv6.enable) {
             errors.add("At least one of IPv4 or IPv6 must be enabled")
         }
-
         return errors
     }
 
     fun isValid(): Boolean = validate().isEmpty()
+
+    /**
+     * Serialize to the Rust v4 client TOML schema. The native engine parses this
+     * with `ClientConfig::parse`; routing/DNS/MTU are applied by the Android
+     * VpnService.Builder, so those fields are informational for the engine.
+     */
+    fun toToml(): String = buildString {
+        appendLine("[client]")
+        appendLine("server = ${q(client.server)}")
+        appendLine("prefer_ipv6 = ${client.preferIpv6}")
+        appendLine("dns_lookup = ${q(client.dnsLookup.wire)}")
+        appendLine("transport = ${q(client.transport.wire)}")
+        appendLine()
+
+        appendLine("[tls]")
+        appendLine("sni = ${q(tls.sni)}")
+        appendLine()
+
+        appendLine("[tun]")
+        appendLine("name = ${q(tun.name)}")
+        appendLine("mtu = ${tun.mtu}")
+        appendLine()
+
+        appendLine("[crypto]")
+        appendLine("cipher = ${q(crypto.cipher.wire)}")
+        // Required by the Rust deserializer; never read on the mobile path.
+        appendLine("private_key_file = ${q("managed-by-host")}")
+        appendLine("server_public_key = ${q(crypto.serverPublicKey)}")
+        appendLine()
+
+        appendLine("[ipv4]")
+        appendLine("enable = ${ipv4.enable}")
+        ipv4.address?.let { appendLine("address = ${q(it)}") }
+        appendLine("prefix = ${ipv4.prefix}")
+        appendLine("route_all = ${ipv4.routeAll}")
+        appendLine("routes = ${arr(ipv4.routes)}")
+        appendLine("exclude_ips = ${arr(ipv4.excludeIps)}")
+        appendLine()
+
+        appendLine("[ipv6]")
+        appendLine("enable = ${ipv6.enable}")
+        ipv6.address?.let { appendLine("address = ${q(it)}") }
+        appendLine("prefix = ${ipv6.prefix}")
+        appendLine("route_all = ${ipv6.routeAll}")
+        appendLine("routes = ${arr(ipv6.routes)}")
+        appendLine("exclude_ips = ${arr(ipv6.excludeIps)}")
+        appendLine()
+
+        appendLine("[dns]")
+        appendLine("servers_v4 = ${arr(dns.serversV4)}")
+        appendLine("servers_v6 = ${arr(dns.serversV6)}")
+        appendLine("search = ${arr(dns.search)}")
+    }
+
+    private fun q(s: String): String = "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+    private fun arr(items: List<String>): String =
+        items.joinToString(prefix = "[", postfix = "]") { q(it) }
+
+    companion object {
+        const val DEFAULT_PORT = 51820
+        const val DEFAULT_MTU = 1420
+    }
 }
 
 @Serializable
 data class ClientSection(
     val server: String,
+    val transport: Transport = Transport.QUIC,
     @SerialName("prefer_ipv6")
     val preferIpv6: Boolean = false,
     @SerialName("dns_lookup")
@@ -97,30 +137,48 @@ data class ClientSection(
 )
 
 @Serializable
-enum class DnsLookupMode {
-    @SerialName("auto")
-    AUTO,
-    @SerialName("always")
-    ALWAYS,
-    @SerialName("never")
-    NEVER
+enum class Transport(val wire: String) {
+    @SerialName("quic")
+    QUIC("quic"),
+    @SerialName("tls")
+    TLS("tls")
 }
+
+@Serializable
+enum class DnsLookupMode(val wire: String) {
+    @SerialName("auto")
+    AUTO("auto"),
+    @SerialName("always")
+    ALWAYS("always"),
+    @SerialName("never")
+    NEVER("never")
+}
+
+@Serializable
+data class TlsSection(
+    val sni: String = "www.cloudflare.com"
+)
 
 @Serializable
 data class TunSection(
     val name: String = "tun0",
-    val mtu: Int = Constants.DEFAULT_MTU,
-    @SerialName("queue_len")
-    val queueLen: Int = 500
+    val mtu: Int = VpnConfig.DEFAULT_MTU
 )
 
 @Serializable
 data class CryptoSection(
     val cipher: CipherSuite = CipherSuite.CHACHA20_POLY1305,
-    val key: String? = null,
-    @SerialName("key_file")
-    val keyFile: String? = null
+    @SerialName("server_public_key")
+    val serverPublicKey: String = ""
 )
+
+@Serializable
+enum class CipherSuite(val wire: String) {
+    @SerialName("chacha20-poly1305")
+    CHACHA20_POLY1305("chacha20-poly1305"),
+    @SerialName("aes-256-gcm")
+    AES_256_GCM("aes-256-gcm")
+}
 
 @Serializable
 data class Ipv4Section(
@@ -154,48 +212,3 @@ data class DnsSection(
     val serversV6: List<String> = emptyList(),
     val search: List<String> = emptyList()
 )
-
-@Serializable
-data class PerformanceSection(
-    @SerialName("socket_recv_buffer")
-    val socketRecvBuffer: Int = Constants.SOCKET_BUFFER_SIZE,
-    @SerialName("socket_send_buffer")
-    val socketSendBuffer: Int = Constants.SOCKET_BUFFER_SIZE,
-    @SerialName("batch_size")
-    val batchSize: Int = 32,
-    @SerialName("multi_queue")
-    val multiQueue: Boolean = false,
-    @SerialName("cpu_affinity")
-    val cpuAffinity: List<Int> = emptyList()
-)
-
-@Serializable
-data class TimeoutsSection(
-    val keepalive: Long = Constants.DEFAULT_KEEPALIVE_SECONDS,
-    val session: Long = 180,
-    val handshake: Long = 10
-)
-
-@Serializable
-data class LoggingSection(
-    val level: String = "info",
-    val file: String? = null
-)
-
-/**
- * Custom serializer for CipherSuite
- */
-@Serializable
-enum class CipherSuite {
-    @SerialName("chacha20-poly1305")
-    CHACHA20_POLY1305,
-    @SerialName("aes-256-gcm")
-    AES_256_GCM;
-
-    fun toCryptoSuite(): dev.yaul.twocha.crypto.CipherSuite {
-        return when (this) {
-            CHACHA20_POLY1305 -> dev.yaul.twocha.crypto.CipherSuite.CHACHA20_POLY1305
-            AES_256_GCM -> dev.yaul.twocha.crypto.CipherSuite.AES_256_GCM
-        }
-    }
-}
