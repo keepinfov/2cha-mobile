@@ -129,9 +129,6 @@ dependencies {
     implementation(libs.ktoml.core)
     implementation(libs.ktoml.file)
 
-    // Bouncy Castle for ChaCha20-Poly1305 and AES-GCM
-    implementation(libs.bcprov.jdk18on)
-
     // JNA — runtime loader for the uniffi-generated bindings (libtwocha_mobile.so)
     implementation(libs.jna) {
         artifact {
@@ -141,6 +138,9 @@ dependencies {
 
     // DataStore for preferences
     implementation(libs.androidx.datastore.preferences)
+
+    // EncryptedSharedPreferences — at-rest storage for the client private key
+    implementation(libs.androidx.security.crypto)
 
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)

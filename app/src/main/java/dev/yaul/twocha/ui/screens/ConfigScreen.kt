@@ -30,19 +30,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.AltRoute
 import androidx.compose.material.icons.rounded.CloudDone
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.SettingsEthernet
 import androidx.compose.material.icons.rounded.SettingsInputHdmi
 import androidx.compose.material.icons.rounded.Shield
-import androidx.compose.material.icons.rounded.Timer
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -80,16 +79,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.yaul.twocha.config.CipherSuite
+import dev.yaul.twocha.config.Transport
 import dev.yaul.twocha.config.VpnConfig
 import dev.yaul.twocha.ui.theme.IconSize
 import dev.yaul.twocha.ui.theme.Radius
@@ -105,10 +106,12 @@ fun ConfigScreen(
 ) {
     val config by viewModel.config.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
+    val clientPublicKey by viewModel.clientPublicKey.collectAsState()
     val isConnected = connectionState == ConnectionState.CONNECTED
 
     var serverAddress by remember(config) { mutableStateOf(config?.client?.server ?: "") }
-    var encryptionKey by remember(config) { mutableStateOf(config?.crypto?.key ?: "") }
+    var serverPublicKey by remember(config) { mutableStateOf(config?.crypto?.serverPublicKey ?: "") }
+    var selectedTransport by remember(config) { mutableStateOf(config?.client?.transport ?: Transport.QUIC) }
     var selectedCipher by remember(config) { mutableStateOf(config?.crypto?.cipher ?: CipherSuite.CHACHA20_POLY1305) }
     var ipv4Address by remember(config) { mutableStateOf(config?.ipv4?.address ?: "10.0.0.2") }
     var ipv4Prefix by remember(config) { mutableStateOf(config?.ipv4?.prefix?.toString() ?: "24") }
@@ -117,9 +120,7 @@ fun ConfigScreen(
     var ipv6Address by remember(config) { mutableStateOf(config?.ipv6?.address ?: "fd00:2cha::2") }
     var dnsServers by remember(config) { mutableStateOf(config?.dns?.serversV4?.joinToString(", ") ?: "1.1.1.1, 8.8.8.8") }
     var mtu by remember(config) { mutableStateOf(config?.tun?.mtu?.toString() ?: "1420") }
-    var keepalive by remember(config) { mutableStateOf(config?.timeouts?.keepalive?.toString() ?: "25") }
 
-    var showKeyField by remember { mutableStateOf(false) }
     var showAdvanced by remember { mutableStateOf(false) }
     var showSaveSheet by remember { mutableStateOf(false) }
     val saveSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -198,6 +199,14 @@ fun ConfigScreen(
 
                 Spacer(modifier = Modifier.height(Spacing.xs))
 
+                TransportDropdown(
+                    selectedTransport = selectedTransport,
+                    onTransportSelected = { selectedTransport = it },
+                    enabled = !isConnected
+                )
+
+                Spacer(modifier = Modifier.height(Spacing.xs))
+
                 CipherDropdown(
                     selectedCipher = selectedCipher,
                     onCipherSelected = { selectedCipher = it },
@@ -207,22 +216,21 @@ fun ConfigScreen(
                 Spacer(modifier = Modifier.height(Spacing.xs))
 
                 ConfigTextField(
-                    value = encryptionKey,
-                    onValueChange = { encryptionKey = it },
-                    label = "Encryption key",
-                    placeholder = "64 hex characters",
-                    leadingIcon = { Icon(Icons.Rounded.Key, contentDescription = null) },
-                    trailingIcon = {
-                        IconButton(onClick = { showKeyField = !showKeyField }) {
-                            Icon(
-                                imageVector = if (showKeyField) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                                contentDescription = if (showKeyField) "Hide" else "Show"
-                            )
-                        }
-                    },
-                    visualTransformation = if (showKeyField) VisualTransformation.None else PasswordVisualTransformation(),
-                    supportingText = "${encryptionKey.length}/64 characters",
-                    isError = encryptionKey.isNotEmpty() && encryptionKey.length != 64,
+                    value = serverPublicKey,
+                    onValueChange = { serverPublicKey = it },
+                    label = "Server public key",
+                    placeholder = "base64 (from `2cha pubkey` on the server)",
+                    leadingIcon = { Icon(Icons.Rounded.Shield, contentDescription = null) },
+                    supportingText = "The server's static public key",
+                    isError = serverPublicKey.isNotEmpty() && serverPublicKey.length < 40,
+                    enabled = !isConnected
+                )
+
+                Spacer(modifier = Modifier.height(Spacing.sm))
+
+                DevicePublicKeyField(
+                    publicKey = clientPublicKey,
+                    onRegenerate = { viewModel.regenerateIdentity() },
                     enabled = !isConnected
                 )
             }
@@ -328,7 +336,7 @@ fun ConfigScreen(
                             style = MaterialTheme.typography.titleSmall
                         )
                         Text(
-                            "Adjust MTU and keepalive for tricky networks",
+                            "Adjust MTU for tricky networks",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -368,17 +376,6 @@ fun ConfigScreen(
                             supportingText = "Recommended: 1280 - 1500",
                             enabled = !isConnected
                         )
-
-                        ConfigTextField(
-                            value = keepalive,
-                            onValueChange = { keepalive = it.filter(Char::isDigit) },
-                            label = "Keepalive interval",
-                            placeholder = "25",
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            leadingIcon = { Icon(Icons.Rounded.Timer, contentDescription = null) },
-                            supportingText = "Seconds between keepalive packets",
-                            enabled = !isConnected
-                        )
                     }
                 }
             }
@@ -394,14 +391,15 @@ fun ConfigScreen(
             onSave = {
                 val newConfig = VpnConfig(
                     client = dev.yaul.twocha.config.ClientSection(
-                        server = serverAddress
+                        server = serverAddress,
+                        transport = selectedTransport
                     ),
                     tun = dev.yaul.twocha.config.TunSection(
                         mtu = mtu.toIntOrNull() ?: 1420
                     ),
                     crypto = dev.yaul.twocha.config.CryptoSection(
                         cipher = selectedCipher,
-                        key = encryptionKey
+                        serverPublicKey = serverPublicKey.trim()
                     ),
                     ipv4 = dev.yaul.twocha.config.Ipv4Section(
                         enable = true,
@@ -415,9 +413,6 @@ fun ConfigScreen(
                     ),
                     dns = dev.yaul.twocha.config.DnsSection(
                         serversV4 = dnsServers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                    ),
-                    timeouts = dev.yaul.twocha.config.TimeoutsSection(
-                        keepalive = keepalive.toLongOrNull() ?: 25
                     )
                 )
                 viewModel.saveConfig(newConfig)
@@ -425,8 +420,9 @@ fun ConfigScreen(
                 onNavigateBack()
             },
             serverAddress = serverAddress,
+            transport = selectedTransport,
             cipher = selectedCipher,
-            keyLength = encryptionKey.length
+            serverPublicKey = serverPublicKey.trim()
         )
     }
 }
@@ -438,9 +434,11 @@ private fun SaveConfigBottomSheet(
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     serverAddress: String,
+    transport: Transport,
     cipher: CipherSuite,
-    keyLength: Int
+    serverPublicKey: String
 ) {
+    val keyValid = serverPublicKey.length >= 40
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -505,6 +503,14 @@ private fun SaveConfigBottomSheet(
                         value = serverAddress.ifEmpty { "Not set" }
                     )
                     SaveSummaryRow(
+                        icon = Icons.AutoMirrored.Rounded.AltRoute,
+                        label = "Transport",
+                        value = when (transport) {
+                            Transport.QUIC -> "QUIC (UDP)"
+                            Transport.TLS -> "TLS (TCP)"
+                        }
+                    )
+                    SaveSummaryRow(
                         icon = Icons.Rounded.Lock,
                         label = "Cipher",
                         value = when (cipher) {
@@ -513,16 +519,16 @@ private fun SaveConfigBottomSheet(
                         }
                     )
                     SaveSummaryRow(
-                        icon = Icons.Rounded.Key,
-                        label = "Key",
-                        value = if (keyLength == 64) "Valid (64 chars)" else "Invalid ($keyLength/64)",
-                        isError = keyLength != 64
+                        icon = Icons.Rounded.Shield,
+                        label = "Server key",
+                        value = if (keyValid) "Set" else "Missing",
+                        isError = !keyValid
                     )
                 }
             }
 
-            // Warning if key invalid
-            if (keyLength != 64) {
+            // Warning if server public key missing
+            if (!keyValid) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(Radius.md),
@@ -534,12 +540,12 @@ private fun SaveConfigBottomSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Rounded.Key,
+                            Icons.Rounded.Shield,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Text(
-                            "Encryption key should be exactly 64 hex characters",
+                            "Set the server's base64 public key before connecting",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
@@ -844,6 +850,118 @@ private fun ConfigSwitchRow(
         trailingContent = {
             Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
         }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransportDropdown(
+    selectedTransport: Transport,
+    onTransportSelected: (Transport) -> Unit,
+    enabled: Boolean
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val label = when (selectedTransport) {
+        Transport.QUIC -> "QUIC (UDP)"
+        Transport.TLS -> "TLS (TCP)"
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) expanded = it },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = label,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Transport") },
+            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.AltRoute, contentDescription = null) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled),
+            enabled = enabled,
+            singleLine = true,
+            shape = RoundedCornerShape(Radius.md),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.3f),
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+            )
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            shape = RoundedCornerShape(Radius.md)
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("QUIC (UDP)", maxLines = 1)
+                        Text(
+                            "QUIC-mimicry framing — default",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                },
+                onClick = { onTransportSelected(Transport.QUIC); expanded = false }
+            )
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("TLS (TCP)", maxLines = 1)
+                        Text(
+                            "Real TLS 1.3 over TCP",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                },
+                onClick = { onTransportSelected(Transport.TLS); expanded = false }
+            )
+        }
+    }
+}
+
+@Composable
+private fun DevicePublicKeyField(
+    publicKey: String,
+    onRegenerate: () -> Unit,
+    enabled: Boolean
+) {
+    val clipboard = LocalClipboardManager.current
+    OutlinedTextField(
+        value = publicKey,
+        onValueChange = {},
+        readOnly = true,
+        label = { Text("This device's public key") },
+        leadingIcon = { Icon(Icons.Rounded.Key, contentDescription = null) },
+        trailingIcon = {
+            Row {
+                IconButton(
+                    onClick = { if (publicKey.isNotEmpty()) clipboard.setText(AnnotatedString(publicKey)) }
+                ) {
+                    Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy public key")
+                }
+                IconButton(onClick = onRegenerate, enabled = enabled) {
+                    Icon(Icons.Rounded.Refresh, contentDescription = "Regenerate identity")
+                }
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        supportingText = { Text("Add this to the server's peer list") },
+        shape = RoundedCornerShape(Radius.md),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.3f),
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+        )
     )
 }
 

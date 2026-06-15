@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.yaul.twocha.config.ConfigParser
 import dev.yaul.twocha.config.VpnConfig
 import dev.yaul.twocha.data.PreferencesManager
+import dev.yaul.twocha.security.KeyManager
 import dev.yaul.twocha.ui.theme.ThemeStyle
 import dev.yaul.twocha.vpn.ConnectionState
 import dev.yaul.twocha.vpn.TwochaVpnService
@@ -35,6 +36,12 @@ class VpnViewModel @Inject constructor(
     }
 
     private val context: Context = application.applicationContext
+
+    private val keyManager = KeyManager(context)
+
+    // This device's base64 X25519 public key — paste into the server peer list.
+    private val _clientPublicKey = MutableStateFlow("")
+    val clientPublicKey: StateFlow<String> = _clientPublicKey.asStateFlow()
 
     // Connection state from service
     val connectionState: StateFlow<ConnectionState> = TwochaVpnService.connectionState
@@ -112,7 +119,33 @@ class VpnViewModel @Inject constructor(
 
     init {
         loadConfig()
+        loadIdentity()
         observeConnectionStateForStats()
+    }
+
+    /** Load (generating on first use) this device's client identity public key. */
+    private fun loadIdentity() {
+        viewModelScope.launch {
+            try {
+                _clientPublicKey.value = withContext(Dispatchers.IO) { keyManager.publicKeyB64() }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load identity", e)
+                _errorMessage.value = "Failed to load device identity: ${e.message}"
+            }
+        }
+    }
+
+    /** Discard the current device identity and generate a fresh keypair. */
+    fun regenerateIdentity() {
+        viewModelScope.launch {
+            try {
+                _clientPublicKey.value = withContext(Dispatchers.IO) { keyManager.regenerate() }
+                addLog(LogLevel.INFO, "Device identity regenerated — update the server peer list")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to regenerate identity", e)
+                _errorMessage.value = "Failed to regenerate identity: ${e.message}"
+            }
+        }
     }
 
     /**
@@ -299,14 +332,7 @@ class VpnViewModel @Inject constructor(
     }
 
     private suspend fun importConfigContent(content: String) {
-        val trimmedContent = content.trim()
-        val config = if (trimmedContent.startsWith("{")) {
-            runCatching { ConfigParser.parseJson(trimmedContent) }
-                .getOrElse { ConfigParser.parseToml(trimmedContent) }
-        } else {
-            runCatching { ConfigParser.parseToml(trimmedContent) }
-                .getOrElse { ConfigParser.parseJson(trimmedContent) }
-        }
+        val config = ConfigParser.parseJson(content.trim())
 
         _config.value = config
         validateConfig(config)

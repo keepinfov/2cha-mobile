@@ -56,8 +56,8 @@
     <string name="config_title">VPN Configuration</string>
     <string name="config_server">Server Address</string>
     <string name="config_server_hint">vpn.example.com:51820</string>
-    <string name="config_key">Encryption Key</string>
-    <string name="config_key_hint">64 character hex key</string>
+    <string name="config_key">Server Public Key</string>
+    <string name="config_key_hint">base64 X25519 public key</string>
     <string name="config_cipher">Cipher Suite</string>
     <string name="config_ipv4">IPv4 Address</string>
     <string name="config_ipv6">IPv6 Address</string>
@@ -96,7 +96,7 @@
     <string name="error_invalid_config">Invalid configuration</string>
     <string name="error_connection_failed">Connection failed</string>
     <string name="error_permission_denied">VPN permission denied</string>
-    <string name="error_invalid_key">Invalid encryption key</string>
+    <string name="error_invalid_key">Invalid server public key</string>
     <string name="error_server_unreachable">Server unreachable</string>
 
     <!-- Dialogs -->
