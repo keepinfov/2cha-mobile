@@ -221,9 +221,13 @@ val generateUniffiBindings by tasks.registering(Exec::class) {
     workingDir = nativeRoot.asFile
     // Library mode reads metadata from any one ABI's .so; arm64-v8a always builds.
     val lib = jniLibsDir.file("arm64-v8a/libtwocha_mobile.so").asFile
+    // `--no-format` skips uniffi's optional ktlint pass (not on PATH in the Nix
+    // dev shell); the generated Kotlin is already well-formed. The cdylib keeps
+    // its symbol table via the `twocha-mobile` release profile override, which
+    // uniffi's library-mode reader needs to find the `UNIFFI_META_*` records.
     commandLine = listOf(
         "cargo", "run", "--release", "-p", "twocha-mobile", "--bin", "uniffi-bindgen",
-        "--", "generate", "--library", lib.absolutePath,
+        "--", "generate", "--no-format", "--library", lib.absolutePath,
         "--language", "kotlin", "--out-dir", bindingsDir.asFile.absolutePath)
 
     doFirst { bindingsDir.asFile.mkdirs() }
