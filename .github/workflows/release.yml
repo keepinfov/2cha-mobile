@@ -57,7 +57,11 @@ jobs:
           EOF
 
       - name: Build release APKs
-        run: nix develop --command ./gradlew :app:assembleRelease --no-daemon --stacktrace
+        # --no-configuration-cache: the custom buildRustNative / generateUniffiBindings
+        # Exec tasks capture Gradle script object references, which the configuration
+        # cache (enabled by default in gradle.properties) can't serialize. The build
+        # otherwise completes, so disabling the cache for this run is the fix.
+        run: nix develop --command ./gradlew :app:assembleRelease --no-daemon --no-configuration-cache --stacktrace
 
       - name: Upload APKs as workflow artifacts
         uses: actions/upload-artifact@v4
