@@ -1,0 +1,75 @@
+name: Release APKs
+
+# Builds the signed split + universal release APKs and attaches them to the
+# GitHub Release. Runs the exact toolchain pinned in flake.nix via `nix develop`
+# (fenix Rust + Android targets, cargo-ndk, Android SDK/NDK, JDK 21), so CI
+# output matches a local `./gradlew :app:assembleRelease`.
+#
+# Requires four repository secrets (Settings -> Secrets and variables -> Actions):
+#   RELEASE_KEYSTORE_BASE64  base64 of the release keystore (`base64 -w0 app/release.keystore`)
+#   RELEASE_STORE_PASSWORD   keystore password
+#   RELEASE_KEY_ALIAS        signing key alias
+#   RELEASE_KEY_PASSWORD     signing key password
+# Without them the build still runs but produces unsigned APKs (the
+# build.gradle.kts signingConfig is guarded on keystore.properties existing).
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build signed release APKs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with native submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Cache the Nix store (SDK/NDK/Rust closure)
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Reconstruct signing material from secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning::RELEASE_KEYSTORE_BASE64 is empty — release APKs will be UNSIGNED."
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > app/release.keystore
+          cat > keystore.properties <<EOF
+          storeFile=release.keystore
+          storePassword=$STORE_PW
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PW
+          EOF
+
+      - name: Build release APKs
+        run: nix develop --command ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Upload APKs as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apks
+          path: app/build/outputs/apk/release/*-release.apk
+          if-no-files-found: error
+
+      - name: Attach APKs to the GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/*-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
