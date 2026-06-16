@@ -154,6 +154,24 @@
 -keep class dev.yaul.twocha.data.** { *; }
 
 # =============================================================================
+# NATIVE FFI (JNA + uniffi)
+# =============================================================================
+
+# JNA binds native code to these classes by reflecting on field/method names
+# (e.g. com.sun.jna.Pointer.peer is read from libjnidispatch.so via JNI). R8
+# obfuscation renames those members and breaks Native.initIDs with
+# "Can't obtain peer field ID for class com.sun.jna.Pointer". Keep JNA intact.
+-keep class com.sun.jna.** { *; }
+-keepclassmembers class * extends com.sun.jna.** { *; }
+-dontwarn java.awt.**
+
+# The uniffi-generated bindings declare JNA Structure subclasses
+# (UniffiRustCallStatus, RustBuffer, ...) whose public fields JNA marshals by
+# name and order — they must not be renamed, reordered or stripped.
+-keep class uniffi.** { *; }
+-keepclassmembers class uniffi.** { *; }
+
+# =============================================================================
 # THIRD-PARTY LIBRARIES
 # =============================================================================
 
