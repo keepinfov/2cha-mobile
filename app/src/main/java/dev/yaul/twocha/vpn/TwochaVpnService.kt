@@ -18,6 +18,7 @@ import dev.yaul.twocha.security.KeyManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import uniffi.twocha_mobile.SocketProtector
+import uniffi.twocha_mobile.TunnelObserver
 import uniffi.twocha_mobile.TwochaTunnel
 import uniffi.twocha_mobile.initLogging
 
@@ -46,6 +47,7 @@ class TwochaVpnService : VpnService() {
         private val _stats = MutableStateFlow(VpnStats())
         val stats: StateFlow<VpnStats> = _stats
 
+        @Volatile
         var isRunning = false
             private set
     }
@@ -53,6 +55,12 @@ class TwochaVpnService : VpnService() {
     private var vpnInterface: ParcelFileDescriptor? = null
     private var tunnel: TwochaTunnel? = null
     private var engineThread: Thread? = null
+
+    // Bumped on every startVpn/stopVpn. A spawned engine thread captures the
+    // generation it belongs to and only runs cleanup if it is still current —
+    // so a stale (slow-to-exit) engine can't tear down a newer session.
+    @Volatile
+    private var generation = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -127,34 +135,54 @@ class TwochaVpnService : VpnService() {
             override fun protect(fd: Int): Boolean = this@TwochaVpnService.protect(fd)
         }
 
+        // The engine fires `onConnected` only after the Noise_IK handshake lands,
+        // so CONNECTED reflects a genuinely established tunnel rather than an
+        // optimistic guess made before any network I/O.
+        val observer = object : TunnelObserver {
+            override fun onConnected() {
+                _connectionState.value = ConnectionState.CONNECTED
+                startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTED))
+                Log.i(TAG, "VPN handshake complete; connected")
+            }
+        }
+
         val engine = TwochaTunnel()
         tunnel = engine
 
         // `start` transfers fd ownership to the engine and blocks until `stop`.
         val detachedFd = tunFd.detachFd()
 
+        val gen = ++generation
         engineThread = Thread({
             try {
                 _stats.value = VpnStats()
-                startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTED))
-                _connectionState.value = ConnectionState.CONNECTED
                 Log.i(TAG, "VPN engine starting (${config.client.transport.wire})")
 
-                engine.start(configToml, privateKeyB64, detachedFd, protector)
+                engine.start(configToml, privateKeyB64, detachedFd, protector, observer)
                 Log.i(TAG, "VPN engine returned")
             } catch (e: Exception) {
                 Log.e(TAG, "VPN engine error", e)
-                _connectionState.value = ConnectionState.ERROR
-                startForeground(NOTIFICATION_ID, createNotification(ConnectionState.ERROR))
+                // A deliberate stop also surfaces here as an error (the handshake
+                // aborts); only report ERROR if we're still the current session.
+                if (gen == generation) {
+                    _connectionState.value = ConnectionState.ERROR
+                    startForeground(NOTIFICATION_ID, createNotification(ConnectionState.ERROR))
+                }
             } finally {
-                val keepError = _connectionState.value == ConnectionState.ERROR
-                cleanup(preserveError = keepError)
+                // Skip if a newer session has superseded us (stale orphan thread).
+                if (gen == generation) {
+                    val keepError = _connectionState.value == ConnectionState.ERROR
+                    cleanup(preserveError = keepError)
+                }
             }
         }, "twocha-engine").also { it.start() }
     }
 
     private fun stopVpn() {
         Log.d(TAG, "Stopping VPN")
+        // Supersede the current session: a slow engine thread that outlives the
+        // join below must not run cleanup and clobber a later re-connect.
+        generation++
         _connectionState.value = ConnectionState.DISCONNECTING
         tunnel?.stop()
         engineThread?.join(2000)
