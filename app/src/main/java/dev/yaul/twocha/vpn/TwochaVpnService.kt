@@ -8,15 +8,19 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import dev.yaul.twocha.MainActivity
 import dev.yaul.twocha.R
 import dev.yaul.twocha.config.ConfigParser
 import dev.yaul.twocha.config.VpnConfig
+import dev.yaul.twocha.data.PreferencesManager
 import dev.yaul.twocha.security.KeyManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import uniffi.twocha_mobile.SocketProtector
 import uniffi.twocha_mobile.TunnelObserver
 import uniffi.twocha_mobile.TwochaTunnel
@@ -55,6 +59,7 @@ class TwochaVpnService : VpnService() {
     private var vpnInterface: ParcelFileDescriptor? = null
     private var tunnel: TwochaTunnel? = null
     private var engineThread: Thread? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     // Bumped on every startVpn/stopVpn. A spawned engine thread captures the
     // generation it belongs to and only runs cleanup if it is still current —
@@ -119,6 +124,14 @@ class TwochaVpnService : VpnService() {
             _connectionState.value = ConnectionState.CONNECTING
             isRunning = true
             startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTING))
+
+            // Doze throttles the engine thread and its socket without a
+            // wakelock, stalling the tunnel on battery. Gated on the
+            // existing "keep alive on battery" preference (default true).
+            val keepAlive = runBlocking {
+                PreferencesManager(applicationContext).keepAliveOnBattery.first()
+            }
+            if (keepAlive) acquireWakeLock()
 
             tunFd = establishVpnInterface(config)
                 ?: throw IllegalStateException("Failed to establish VPN interface")
@@ -191,9 +204,23 @@ class TwochaVpnService : VpnService() {
         stopSelf()
     }
 
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "twocha:vpn").apply {
+            setReferenceCounted(false)
+            acquire()
+        }
+        Log.d(TAG, "Partial wakelock acquired")
+    }
+
     private fun cleanup(preserveError: Boolean) {
         tunnel = null
         engineThread = null
+        // Single release funnel: every exit path (stopVpn, engine-thread
+        // finally, startVpn failure) ends here, so the lock cannot leak.
+        wakeLock?.takeIf { it.isHeld }?.release()
+        wakeLock = null
         // The engine owns the detached fd; only close ours if it was never handed off.
         vpnInterface?.close()
         vpnInterface = null
