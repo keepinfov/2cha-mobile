@@ -150,12 +150,20 @@ class TwochaVpnService : VpnService() {
 
         // The engine fires `onConnected` only after the Noise_IK handshake lands,
         // so CONNECTED reflects a genuinely established tunnel rather than an
-        // optimistic guess made before any network I/O.
+        // optimistic guess made before any network I/O. `onStats` streams
+        // cumulative payload byte counters at ~1 Hz for the live traffic UI.
         val observer = object : TunnelObserver {
             override fun onConnected() {
                 _connectionState.value = ConnectionState.CONNECTED
                 startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTED))
                 Log.i(TAG, "VPN handshake complete; connected")
+            }
+
+            override fun onStats(txBytes: ULong, rxBytes: ULong) {
+                _stats.value = _stats.value.copy(
+                    bytesSent = txBytes.toLong(),
+                    bytesReceived = rxBytes.toLong()
+                )
             }
         }
 
@@ -350,9 +358,9 @@ enum class ConnectionState {
 }
 
 /**
- * VPN traffic statistics. Live byte/packet counters are not yet surfaced by the
- * native engine (run_mobile blocks without a stats callback); only duration is
- * meaningful until a stats hook is added to the FFI.
+ * VPN traffic statistics. Byte counters are cumulative payload bytes since
+ * tunnel start, streamed by the native engine via `TunnelObserver.onStats`
+ * (~1 Hz). Packet counters are not surfaced by the FFI yet.
  */
 data class VpnStats(
     val bytesReceived: Long = 0,
