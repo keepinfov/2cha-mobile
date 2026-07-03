@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.SettingsEthernet
@@ -102,7 +103,8 @@ import dev.yaul.twocha.vpn.ConnectionState
 @Composable
 fun ConfigScreen(
     viewModel: VpnViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToScan: () -> Unit = {}
 ) {
     val config by viewModel.config.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
@@ -162,6 +164,12 @@ fun ConfigScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToScan, enabled = !isConnected) {
+                        Icon(
+                            Icons.Rounded.QrCodeScanner,
+                            contentDescription = "Scan config QR"
+                        )
+                    }
                     IconButton(onClick = { showSaveSheet = true }, enabled = !isConnected) {
                         Icon(Icons.Rounded.Save, contentDescription = "Save configuration")
                     }
