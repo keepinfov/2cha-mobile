@@ -2,13 +2,12 @@ package dev.yaul.twocha.ui.scan
 
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
-import com.google.zxing.DecodeHintType
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.NotFoundException
+import com.google.zxing.LuminanceSource
 import com.google.zxing.PlanarYUVLuminanceSource
+import com.google.zxing.ReaderException
 import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
 
 /**
  * CameraX analyzer decoding QR codes with ZXing core.
@@ -16,29 +15,28 @@ import com.google.zxing.common.HybridBinarizer
  * Deliberately the only place that knows the decode engine: swap this class
  * if a different decoder is ever needed. ZXing is pure Java (no Play
  * Services), which keeps the app working on degoogled devices and eligible
- * for F-Droid; terminal-rendered config QRs are large and high-contrast, well
- * within its comfort zone.
+ * for F-Droid.
  *
- * Frames are throttled and decoding stops after the first hit until
- * [reset] — the caller decides whether to keep scanning (e.g. after an
- * invalid payload).
+ * Tuned for the large, high-contrast QRs printed by `2cha setup`:
+ *  - a QR-only [QRCodeReader] (no multi-format probing);
+ *  - **no `TRY_HARDER`** — it multiplies work per frame and is pure overhead
+ *    for these codes (this was the main cause of sluggish scanning);
+ *  - the luminance is cropped to the centred square the user aims at, so we
+ *    decode far fewer pixels and ignore background clutter;
+ *  - each frame is tried both normally and inverted, so a code rendered
+ *    light-on-dark (dark terminal themes) scans just as fast as dark-on-light.
+ *
+ * Decoding stops after the first hit until [reset] — the caller decides
+ * whether to keep scanning (e.g. after an invalid payload).
  */
 class QrImageAnalyzer(
     private val onQrDecoded: (String) -> Unit
 ) : ImageAnalysis.Analyzer {
 
-    private val reader = MultiFormatReader().apply {
-        setHints(
-            mapOf(
-                DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
-                DecodeHintType.TRY_HARDER to true
-            )
-        )
-    }
+    private val reader = QRCodeReader()
 
     @Volatile
     private var paused = false
-    private var lastAttemptMs = 0L
 
     /** Resume scanning after a rejected payload. */
     fun reset() {
@@ -48,10 +46,6 @@ class QrImageAnalyzer(
     override fun analyze(image: ImageProxy) {
         image.use { proxy ->
             if (paused) return
-            val now = System.currentTimeMillis()
-            if (now - lastAttemptMs < THROTTLE_MS) return
-            lastAttemptMs = now
-
             val text = decode(proxy) ?: return
             paused = true
             onQrDecoded(text)
@@ -59,31 +53,38 @@ class QrImageAnalyzer(
     }
 
     private fun decode(proxy: ImageProxy): String? {
-        // Y plane = luminance, which is all ZXing needs
+        val source = centeredLuminance(proxy)
+        // Try the frame as-is, then inverted — cheap, and it makes the
+        // decoder polarity-agnostic across terminal colour schemes.
+        return decode(source) ?: decode(source.invert())
+    }
+
+    private fun decode(source: LuminanceSource): String? = try {
+        reader.decode(BinaryBitmap(HybridBinarizer(source))).text
+    } catch (_: ReaderException) {
+        // NotFound / Checksum / Format — no code in this (sub)frame
+        null
+    } finally {
+        reader.reset()
+    }
+
+    /** Y-plane luminance cropped to the centred square the scan frame shows. */
+    private fun centeredLuminance(proxy: ImageProxy): PlanarYUVLuminanceSource {
         val yPlane = proxy.planes[0]
         val yBytes = ByteArray(yPlane.buffer.remaining()).also { yPlane.buffer.get(it) }
-        val source = PlanarYUVLuminanceSource(
+
+        val side = minOf(proxy.width, proxy.height)
+        val left = (proxy.width - side) / 2
+        val top = (proxy.height - side) / 2
+        return PlanarYUVLuminanceSource(
             yBytes,
             yPlane.rowStride,
             proxy.height,
-            0,
-            0,
-            proxy.width,
-            proxy.height,
+            left,
+            top,
+            side,
+            side,
             false
         )
-        return try {
-            reader.decodeWithState(BinaryBitmap(HybridBinarizer(source))).text
-        } catch (_: NotFoundException) {
-            null
-        } catch (_: Exception) {
-            null
-        } finally {
-            reader.reset()
-        }
-    }
-
-    private companion object {
-        const val THROTTLE_MS = 150L
     }
 }
