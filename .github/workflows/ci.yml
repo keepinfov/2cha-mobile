@@ -15,6 +15,12 @@ on:
   pull_request:
     branches: [master, main]
 
+# magic-nix-cache authenticates to FlakeHub via OIDC: it needs permission to
+# request the job's id-token, or the cache silently degrades / errors.
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     name: Build debug APK (arm64-v8a)

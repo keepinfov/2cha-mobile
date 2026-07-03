@@ -20,6 +20,8 @@ on:
 
 permissions:
   contents: write
+  # magic-nix-cache authenticates to FlakeHub via OIDC
+  id-token: write
 
 jobs:
   build:
