@@ -1,6 +1,8 @@
 package dev.yaul.twocha
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.VpnService
 import android.os.Build
@@ -32,6 +34,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+    // Android 13+ suppresses the foreground-service notification (and the whole
+    // shade UX) unless POST_NOTIFICATIONS is granted at runtime; the result is
+    // best-effort, so no callback handling is needed.
+    private val notificationPermissionLauncher =
+        registerForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        ) { /* granted or not, the tunnel still works — the notice just won't show */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -40,9 +50,19 @@ class MainActivity : AppCompatActivity() {
         setupTransparentStatusBar()
         updateSystemBarsAppearance()
         applyEdgeToEdgeInsets()
+        requestNotificationPermissionIfNeeded()
 
         if (savedInstanceState == null) {
             openHome()
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
