@@ -48,6 +48,11 @@ data class VpnConfig(
         if (client.transport == Transport.TLS && tls.sni.isBlank()) {
             errors.add("TLS transport requires an SNI host")
         }
+        if (tun.mtu !in MIN_MTU..MAX_MTU) {
+            // Same policy as the Rust config validation: each packet gains
+            // 35 bytes of tunnel overhead and must fit a 1500-byte datagram.
+            errors.add("MTU must be in $MIN_MTU..$MAX_MTU")
+        }
         if (ipv4.enable && ipv4.address.isNullOrBlank()) {
             errors.add("IPv4 address is required when IPv4 is enabled")
         }
@@ -123,6 +128,12 @@ data class VpnConfig(
     companion object {
         const val DEFAULT_PORT = 51820
         const val DEFAULT_MTU = 1420
+
+        /** IPv4 minimum reassembly size — smaller MTUs break DNS/TCP. */
+        const val MIN_MTU = 576
+
+        /** 1500 (wire datagram) − 35 (header 17 + inner length 2 + AEAD tag 16). */
+        const val MAX_MTU = 1465
     }
 }
 

@@ -8,15 +8,19 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import dev.yaul.twocha.MainActivity
 import dev.yaul.twocha.R
 import dev.yaul.twocha.config.ConfigParser
 import dev.yaul.twocha.config.VpnConfig
+import dev.yaul.twocha.data.PreferencesManager
 import dev.yaul.twocha.security.KeyManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import uniffi.twocha_mobile.SocketProtector
 import uniffi.twocha_mobile.TunnelObserver
 import uniffi.twocha_mobile.TwochaTunnel
@@ -55,6 +59,7 @@ class TwochaVpnService : VpnService() {
     private var vpnInterface: ParcelFileDescriptor? = null
     private var tunnel: TwochaTunnel? = null
     private var engineThread: Thread? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     // Bumped on every startVpn/stopVpn. A spawned engine thread captures the
     // generation it belongs to and only runs cleanup if it is still current —
@@ -120,6 +125,14 @@ class TwochaVpnService : VpnService() {
             isRunning = true
             startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTING))
 
+            // Doze throttles the engine thread and its socket without a
+            // wakelock, stalling the tunnel on battery. Gated on the
+            // existing "keep alive on battery" preference (default true).
+            val keepAlive = runBlocking {
+                PreferencesManager(applicationContext).keepAliveOnBattery.first()
+            }
+            if (keepAlive) acquireWakeLock()
+
             tunFd = establishVpnInterface(config)
                 ?: throw IllegalStateException("Failed to establish VPN interface")
             vpnInterface = tunFd
@@ -137,12 +150,20 @@ class TwochaVpnService : VpnService() {
 
         // The engine fires `onConnected` only after the Noise_IK handshake lands,
         // so CONNECTED reflects a genuinely established tunnel rather than an
-        // optimistic guess made before any network I/O.
+        // optimistic guess made before any network I/O. `onStats` streams
+        // cumulative payload byte counters at ~1 Hz for the live traffic UI.
         val observer = object : TunnelObserver {
             override fun onConnected() {
                 _connectionState.value = ConnectionState.CONNECTED
                 startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTED))
                 Log.i(TAG, "VPN handshake complete; connected")
+            }
+
+            override fun onStats(txBytes: ULong, rxBytes: ULong) {
+                _stats.value = _stats.value.copy(
+                    bytesSent = txBytes.toLong(),
+                    bytesReceived = rxBytes.toLong()
+                )
             }
         }
 
@@ -191,9 +212,23 @@ class TwochaVpnService : VpnService() {
         stopSelf()
     }
 
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "twocha:vpn").apply {
+            setReferenceCounted(false)
+            acquire()
+        }
+        Log.d(TAG, "Partial wakelock acquired")
+    }
+
     private fun cleanup(preserveError: Boolean) {
         tunnel = null
         engineThread = null
+        // Single release funnel: every exit path (stopVpn, engine-thread
+        // finally, startVpn failure) ends here, so the lock cannot leak.
+        wakeLock?.takeIf { it.isHeld }?.release()
+        wakeLock = null
         // The engine owns the detached fd; only close ours if it was never handed off.
         vpnInterface?.close()
         vpnInterface = null
@@ -323,9 +358,9 @@ enum class ConnectionState {
 }
 
 /**
- * VPN traffic statistics. Live byte/packet counters are not yet surfaced by the
- * native engine (run_mobile blocks without a stats callback); only duration is
- * meaningful until a stats hook is added to the FFI.
+ * VPN traffic statistics. Byte counters are cumulative payload bytes since
+ * tunnel start, streamed by the native engine via `TunnelObserver.onStats`
+ * (~1 Hz). Packet counters are not surfaced by the FFI yet.
  */
 data class VpnStats(
     val bytesReceived: Long = 0,

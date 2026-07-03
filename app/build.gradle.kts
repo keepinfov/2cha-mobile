@@ -30,8 +30,8 @@ android {
         applicationId = "dev.yaul.twocha"
         minSdk = 29
         targetSdk = 36
-        versionCode = 36
-        versionName = "0.2.0"
+        versionCode = 37
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -203,7 +203,12 @@ val jniLibsDir = layout.projectDirectory.dir("src/main/jniLibs")
 val bindingsDir = layout.projectDirectory.dir("src/main/java")
 
 // ABIs we ship; cargo-ndk maps each to its matching Rust android target.
-val nativeAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+// Overridable via -PnativeAbis=arm64-v8a[,...] so CI can build a fast
+// single-ABI debug APK on pull requests (release builds keep all four).
+val nativeAbis = (findProperty("nativeAbis") as String?)
+    ?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
+    ?.takeIf { it.isNotEmpty() }
+    ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
 
 // Resolve the NDK: prefer an already-exported env (Nix dev shell / CI), else
 // fall back to the newest NDK installed under the configured Android SDK.
@@ -246,8 +251,9 @@ val generateUniffiBindings by tasks.registering(Exec::class) {
     dependsOn(buildRustNative)
 
     workingDir = nativeRoot.asFile
-    // Library mode reads metadata from any one ABI's .so; arm64-v8a always builds.
-    val lib = jniLibsDir.file("arm64-v8a/libtwocha_mobile.so").asFile
+    // Library mode reads metadata from any one ABI's .so; use the first
+    // configured ABI so restricted (-PnativeAbis=...) builds keep working.
+    val lib = jniLibsDir.file("${nativeAbis.first()}/libtwocha_mobile.so").asFile
     // `--no-format` skips uniffi's optional ktlint pass (not on PATH in the Nix
     // dev shell); the generated Kotlin is already well-formed. The cdylib keeps
     // its symbol table via the `twocha-mobile` release profile override, which
