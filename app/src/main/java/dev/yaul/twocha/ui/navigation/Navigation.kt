@@ -11,6 +11,7 @@ import androidx.navigation.compose.composable
 import dev.yaul.twocha.ui.screens.ConfigScreen
 import dev.yaul.twocha.ui.screens.HomeScreen
 import dev.yaul.twocha.ui.screens.LogsScreen
+import dev.yaul.twocha.ui.screens.ScanConfigScreen
 import dev.yaul.twocha.ui.screens.SettingsScreen
 import dev.yaul.twocha.ui.theme.Duration
 import dev.yaul.twocha.ui.theme.SpringPhysics
@@ -22,6 +23,7 @@ import dev.yaul.twocha.viewmodel.VpnViewModel
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Config : Screen("config")
+    object ScanConfig : Screen("scan_config")
     object Settings : Screen("settings")
     object Logs : Screen("logs")
 }
@@ -130,6 +132,19 @@ fun TwochaNavHost(
         // Config Screen
         composable(route = Screen.Config.route) {
             ConfigScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToScan = {
+                    navController.navigate(Screen.ScanConfig.route) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        // QR Config Import Screen
+        composable(route = Screen.ScanConfig.route) {
+            ScanConfigScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
