@@ -1,0 +1,31 @@
+name: CI
+
+# PR gate: build the debug (unsigned) APK with the exact toolchain pinned in
+# flake.nix via `nix develop`, mirroring release.yml. This exercises the full
+# native pipeline — cargo-ndk across all four ABIs and uniffi bindgen — so an
+# FFI break in the `native/2cha` submodule fails the PR instead of the release.
+
+on:
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with native submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Cache the Nix store (SDK/NDK/Rust closure)
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build debug APK
+        # --no-configuration-cache: see release.yml — the custom Rust/uniffi
+        # Exec tasks can't be serialized by the configuration cache.
+        run: nix develop --command ./gradlew :app:assembleDebug --no-daemon --no-configuration-cache --stacktrace
