@@ -221,6 +221,21 @@ fun resolveNdkHome(): String? {
         ?.absolutePath
 }
 
+// Stamp file recording which submodule commit the jniLibs were built from,
+// so packaging can prove the .so matches the checked-out native code.
+val nativeStamp = jniLibsDir.file(".native-commit")
+
+fun nativeHeadSha(): String {
+    val proc = ProcessBuilder("git", "-C", nativeRoot.asFile.absolutePath, "rev-parse", "HEAD")
+        .redirectErrorStream(true)
+        .start()
+    val out = proc.inputStream.bufferedReader().readText().trim()
+    if (proc.waitFor() != 0) {
+        throw GradleException("cannot resolve native submodule commit: $out")
+    }
+    return out
+}
+
 val buildRustNative by tasks.registering(Exec::class) {
     group = "native"
     description = "Compile twocha-mobile to per-ABI .so via cargo-ndk"
@@ -242,7 +257,12 @@ val buildRustNative by tasks.registering(Exec::class) {
         environment("ANDROID_NDK_HOME", ndk)
         environment("ANDROID_NDK_ROOT", ndk)
         jniLibsDir.asFile.mkdirs()
+        // Invalidate the stamp up front: a failed/partial build must not
+        // leave a stamp claiming the previous libs are current.
+        nativeStamp.asFile.delete()
     }
+
+    doLast { nativeStamp.asFile.writeText(nativeHeadSha()) }
 }
 
 val generateUniffiBindings by tasks.registering(Exec::class) {
@@ -266,7 +286,41 @@ val generateUniffiBindings by tasks.registering(Exec::class) {
     doFirst { bindingsDir.asFile.mkdirs() }
 }
 
-// Every Android build first produces the native artifacts + bindings.
-tasks.named("preBuild") {
+// Guard against packaging stale native libs: every configured ABI's .so must
+// exist and the stamp written by buildRustNative must match the submodule
+// commit that is actually checked out. Catches a restored-but-outdated cache,
+// a partial rebuild, or any future skip-the-native-build shortcut.
+val verifyNativeArtifacts by tasks.registering {
+    group = "native"
+    description = "Fail the build if jniLibs don't match the native submodule commit"
     dependsOn(generateUniffiBindings)
+
+    doLast {
+        val expected = nativeHeadSha()
+        val stampFile = nativeStamp.asFile
+        if (!stampFile.exists()) {
+            throw GradleException(
+                "jniLibs have no build stamp (${stampFile}); the native build " +
+                    "did not complete — refusing to package possibly stale libs.")
+        }
+        val actual = stampFile.readText().trim()
+        if (actual != expected) {
+            throw GradleException(
+                "stale native libs: jniLibs were built from $actual but the " +
+                    "native/2cha submodule is at $expected. Re-run " +
+                    ":app:buildRustNative before packaging.")
+        }
+        for (abi in nativeAbis) {
+            val so = jniLibsDir.file("$abi/libtwocha_mobile.so").asFile
+            if (!so.exists()) {
+                throw GradleException("missing native lib for ABI $abi: $so")
+            }
+        }
+    }
+}
+
+// Every Android build first produces the native artifacts + bindings, then
+// proves they belong to the checked-out submodule commit.
+tasks.named("preBuild") {
+    dependsOn(verifyNativeArtifacts)
 }

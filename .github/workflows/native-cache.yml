@@ -1,0 +1,67 @@
+name: Native cache warmer
+
+# Builds the native core once per submodule bump and saves the cargo target
+# dir keyed on the exact submodule commit. PR and release runs restore that
+# key (caches created on the default branch are readable everywhere), so
+# their native build collapses to a cargo fingerprint check — "build once per
+# submodule update, reuse everywhere" without artifact plumbing.
+#
+# All four ABIs are built here (plus the host uniffi-bindgen binary) so the
+# warmed target dir is a superset of what any consumer needs: the single-ABI
+# PR build and the 4-ABI release build both hit the same key.
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - native/2cha
+      - .github/workflows/native-cache.yml
+  workflow_dispatch:
+
+permissions:
+  id-token: write # magic-nix-cache authenticates to FlakeHub via OIDC
+  contents: read
+
+jobs:
+  warm:
+    name: Build native core (all ABIs)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with native submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Cache the Nix store (SDK/NDK/Rust closure)
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Resolve native submodule commit
+        id: native
+        run: echo "sha=$(git rev-parse HEAD:native/2cha)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo registry + native target dir
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/2cha/target
+          key: ${{ runner.os }}-cargo-android-${{ steps.native.outputs.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-android-
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties', 'gradle.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build native libs + bindings (no APK)
+        run: nix develop --command ./gradlew :app:buildRustNative :app:generateUniffiBindings --no-daemon --no-configuration-cache --stacktrace
