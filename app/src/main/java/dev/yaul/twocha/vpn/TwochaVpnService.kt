@@ -331,20 +331,29 @@ class TwochaVpnService : VpnService() {
             ConnectionState.CONNECTING -> getString(R.string.notification_connecting)
             else -> getString(R.string.app_name)
         }
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val text = when (state) {
+            ConnectionState.CONNECTED -> getString(R.string.notification_tap_disconnect)
+            ConnectionState.CONNECTING -> getString(R.string.notification_connecting)
+            ConnectionState.ERROR -> getString(R.string.notification_error)
+            else -> getString(R.string.notification_tap_disconnect)
+        }
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
-            .setContentText(getString(R.string.notification_tap_disconnect))
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_stat_vpn)
             .setContentIntent(pendingIntent)
-            .addAction(
-                android.R.drawable.ic_delete,
-                getString(R.string.btn_disconnect),
-                disconnectIntent
-            )
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+        // A disconnect action only makes sense while there's a live session.
+        if (state == ConnectionState.CONNECTED || state == ConnectionState.CONNECTING) {
+            builder.addAction(
+                R.drawable.ic_stat_vpn,
+                getString(R.string.btn_disconnect),
+                disconnectIntent
+            )
+        }
+        return builder.build()
     }
 }
 
