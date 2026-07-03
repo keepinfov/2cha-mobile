@@ -104,7 +104,7 @@ import dev.yaul.twocha.vpn.ConnectionState
 fun ConfigScreen(
     viewModel: VpnViewModel,
     onNavigateBack: () -> Unit,
-    onNavigateToScan: () -> Unit = {}
+    onNavigateToScan: () -> Unit
 ) {
     val config by viewModel.config.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
