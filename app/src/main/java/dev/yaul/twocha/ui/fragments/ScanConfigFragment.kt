@@ -12,13 +12,12 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
-import dev.yaul.twocha.R
-import dev.yaul.twocha.ui.screens.ConfigScreen
+import dev.yaul.twocha.ui.screens.ScanConfigScreen
 import dev.yaul.twocha.ui.theme.TwochaTheme
 import dev.yaul.twocha.viewmodel.VpnViewModel
 
 @AndroidEntryPoint
-class ConfigFragment : Fragment() {
+class ScanConfigFragment : Fragment() {
 
     private val viewModel: VpnViewModel by activityViewModels()
 
@@ -40,30 +39,15 @@ class ConfigFragment : Fragment() {
             val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
 
             TwochaTheme(themeStyle = themeStyle, dynamicColor = dynamicColor) {
-                ConfigScreen(
+                ScanConfigScreen(
                     viewModel = viewModel,
-                    onNavigateBack = { parentFragmentManager.popBackStack() },
-                    onNavigateToScan = { openScanner() }
+                    onNavigateBack = { parentFragmentManager.popBackStack() }
                 )
             }
         }
     }
 
-    private fun openScanner() {
-        parentFragmentManager
-            .beginTransaction()
-            .setCustomAnimations(
-                R.anim.slide_in_right,
-                R.anim.slide_out_left,
-                R.anim.slide_in_left,
-                R.anim.slide_out_right
-            )
-            .replace(R.id.fragment_container, ScanConfigFragment(), ScanConfigFragment.TAG)
-            .addToBackStack(ScanConfigFragment.TAG)
-            .commit()
-    }
-
     companion object {
-        const val TAG = "ConfigFragment"
+        const val TAG = "ScanConfigFragment"
     }
 }
