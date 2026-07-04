@@ -45,6 +45,7 @@
             nativeBuildInputs = with pkgs; [
               rustToolchain
               cargo-ndk        # cargo ndk -t <abi> build  (sets NDK linkers for you)
+              go               # cgo core for the REALITY transport (native/goreality)
               pkg-config
               jdk21            # matches the app's Java/Kotlin toolchain (21)
               kotlin           # for the generated uniffi Kotlin bindings

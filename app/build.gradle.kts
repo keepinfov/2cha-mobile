@@ -247,9 +247,11 @@ val buildRustNative by tasks.registering(Exec::class) {
     description = "Compile twocha-mobile to per-ABI .so via cargo-ndk"
 
     workingDir = nativeRoot.asFile
+    // --features reality links the Go xtls/reality core per ABI (cargo-ndk exports
+    // the NDK clang as CC_<target>, which the crate's build.rs forwards to cgo).
     commandLine = listOf("cargo", "ndk") +
         nativeAbis.flatMap { listOf("-t", it) } +
-        listOf("-o", jniLibsDir.asFile.absolutePath, "build", "--release", "-p", "twocha-mobile")
+        listOf("-o", jniLibsDir.asFile.absolutePath, "build", "--release", "-p", "twocha-mobile", "--features", "reality")
 
     doFirst {
         if (!nativeManifest.asFile.exists()) {
