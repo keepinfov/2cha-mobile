@@ -114,6 +114,10 @@ fun ConfigScreen(
     var serverAddress by remember(config) { mutableStateOf(config?.client?.server ?: "") }
     var serverPublicKey by remember(config) { mutableStateOf(config?.crypto?.serverPublicKey ?: "") }
     var selectedTransport by remember(config) { mutableStateOf(config?.client?.transport ?: Transport.QUIC) }
+    var realityPublicKey by remember(config) { mutableStateOf(config?.reality?.publicKey ?: "") }
+    var realityShortId by remember(config) { mutableStateOf(config?.reality?.shortId ?: "") }
+    var realityServerName by remember(config) { mutableStateOf(config?.reality?.serverName ?: "") }
+    var realityFingerprint by remember(config) { mutableStateOf(config?.reality?.fingerprint ?: "chrome") }
     var selectedCipher by remember(config) { mutableStateOf(config?.crypto?.cipher ?: CipherSuite.CHACHA20_POLY1305) }
     var ipv4Address by remember(config) { mutableStateOf(config?.ipv4?.address ?: "10.0.0.2") }
     var ipv4Prefix by remember(config) { mutableStateOf(config?.ipv4?.prefix?.toString() ?: "24") }
@@ -212,6 +216,47 @@ fun ConfigScreen(
                     onTransportSelected = { selectedTransport = it },
                     enabled = !isConnected
                 )
+
+                if (selectedTransport == Transport.REALITY) {
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    ConfigTextField(
+                        value = realityPublicKey,
+                        onValueChange = { realityPublicKey = it },
+                        label = "REALITY public key",
+                        placeholder = "base64 (from `2cha reality-keygen`)",
+                        leadingIcon = { Icon(Icons.Rounded.Shield, contentDescription = null) },
+                        supportingText = "The server's REALITY public key",
+                        enabled = !isConnected
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    ConfigTextField(
+                        value = realityShortId,
+                        onValueChange = { realityShortId = it },
+                        label = "Short id",
+                        placeholder = "hex (matches a server short id)",
+                        leadingIcon = { Icon(Icons.Rounded.Shield, contentDescription = null) },
+                        enabled = !isConnected
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    ConfigTextField(
+                        value = realityServerName,
+                        onValueChange = { realityServerName = it },
+                        label = "SNI to mimic",
+                        placeholder = "www.microsoft.com",
+                        leadingIcon = { Icon(Icons.Rounded.Shield, contentDescription = null) },
+                        supportingText = "One of the server's allowed server names",
+                        enabled = !isConnected
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    ConfigTextField(
+                        value = realityFingerprint,
+                        onValueChange = { realityFingerprint = it },
+                        label = "uTLS fingerprint",
+                        placeholder = "chrome | firefox | safari | edge",
+                        leadingIcon = { Icon(Icons.Rounded.Shield, contentDescription = null) },
+                        enabled = !isConnected
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(Spacing.xs))
 
@@ -402,6 +447,12 @@ fun ConfigScreen(
                         server = serverAddress,
                         transport = selectedTransport
                     ),
+                    reality = dev.yaul.twocha.config.RealitySection(
+                        publicKey = realityPublicKey.trim(),
+                        shortId = realityShortId.trim(),
+                        serverName = realityServerName.trim(),
+                        fingerprint = realityFingerprint.trim().ifBlank { "chrome" }
+                    ),
                     tun = dev.yaul.twocha.config.TunSection(
                         mtu = mtu.toIntOrNull() ?: 1420
                     ),
@@ -516,6 +567,7 @@ private fun SaveConfigBottomSheet(
                         value = when (transport) {
                             Transport.QUIC -> "QUIC (UDP)"
                             Transport.TLS -> "TLS (TCP)"
+                            Transport.REALITY -> "REALITY (TCP)"
                         }
                     )
                     SaveSummaryRow(
@@ -873,6 +925,7 @@ private fun TransportDropdown(
     val label = when (selectedTransport) {
         Transport.QUIC -> "QUIC (UDP)"
         Transport.TLS -> "TLS (TCP)"
+        Transport.REALITY -> "REALITY (TCP)"
     }
 
     ExposedDropdownMenuBox(
@@ -931,6 +984,20 @@ private fun TransportDropdown(
                     }
                 },
                 onClick = { onTransportSelected(Transport.TLS); expanded = false }
+            )
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("REALITY (TCP)", maxLines = 1)
+                        Text(
+                            "Anti-probe TLS — borrows a real site's cert",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                },
+                onClick = { onTransportSelected(Transport.REALITY); expanded = false }
             )
         }
     }

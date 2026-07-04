@@ -18,6 +18,7 @@ import kotlinx.serialization.Serializable
 data class VpnConfig(
     val client: ClientSection,
     val tls: TlsSection = TlsSection(),
+    val reality: RealitySection = RealitySection(),
     val tun: TunSection = TunSection(),
     val crypto: CryptoSection,
     val ipv4: Ipv4Section = Ipv4Section(),
@@ -47,6 +48,17 @@ data class VpnConfig(
         }
         if (client.transport == Transport.TLS && tls.sni.isBlank()) {
             errors.add("TLS transport requires an SNI host")
+        }
+        if (client.transport == Transport.REALITY) {
+            if (reality.publicKey.isBlank()) {
+                errors.add("REALITY transport requires the server's public key")
+            }
+            if (reality.shortId.isBlank()) {
+                errors.add("REALITY transport requires a short id")
+            }
+            if (reality.serverName.isBlank()) {
+                errors.add("REALITY transport requires a server name (SNI to mimic)")
+            }
         }
         if (tun.mtu !in MIN_MTU..MAX_MTU) {
             // Same policy as the Rust config validation: each packet gains
@@ -83,6 +95,15 @@ data class VpnConfig(
         appendLine("[tls]")
         appendLine("sni = ${q(tls.sni)}")
         appendLine()
+
+        if (client.transport == Transport.REALITY) {
+            appendLine("[reality]")
+            appendLine("public_key = ${q(reality.publicKey)}")
+            appendLine("short_id = ${q(reality.shortId)}")
+            appendLine("server_name = ${q(reality.serverName)}")
+            appendLine("fingerprint = ${q(reality.fingerprint)}")
+            appendLine()
+        }
 
         appendLine("[tun]")
         appendLine("name = ${q(tun.name)}")
@@ -152,7 +173,9 @@ enum class Transport(val wire: String) {
     @SerialName("quic")
     QUIC("quic"),
     @SerialName("tls")
-    TLS("tls")
+    TLS("tls"),
+    @SerialName("reality")
+    REALITY("reality")
 }
 
 @Serializable
@@ -168,6 +191,17 @@ enum class DnsLookupMode(val wire: String) {
 @Serializable
 data class TlsSection(
     val sni: String = "www.cloudflare.com"
+)
+
+@Serializable
+data class RealitySection(
+    @SerialName("public_key")
+    val publicKey: String = "",
+    @SerialName("short_id")
+    val shortId: String = "",
+    @SerialName("server_name")
+    val serverName: String = "",
+    val fingerprint: String = "chrome"
 )
 
 @Serializable
