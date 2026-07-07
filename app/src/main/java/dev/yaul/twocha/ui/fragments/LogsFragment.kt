@@ -11,13 +11,12 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
-import dev.yaul.twocha.MainActivity
-import dev.yaul.twocha.ui.screens.HomeScreen
+import dev.yaul.twocha.ui.screens.LogsScreen
 import dev.yaul.twocha.ui.theme.TwochaTheme
 import dev.yaul.twocha.viewmodel.VpnViewModel
 
 @AndroidEntryPoint
-class HomeFragment : Fragment() {
+class LogsFragment : Fragment() {
 
     private val viewModel: VpnViewModel by activityViewModels()
 
@@ -32,17 +31,15 @@ class HomeFragment : Fragment() {
             val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
 
             TwochaTheme(themeStyle = themeStyle, dynamicColor = dynamicColor) {
-                HomeScreen(
+                LogsScreen(
                     viewModel = viewModel,
-                    onNavigateToConfig = { (activity as? MainActivity)?.openConfig() },
-                    onNavigateToSettings = { (activity as? MainActivity)?.openSettings() },
-                    onNavigateToLogs = { (activity as? MainActivity)?.openLogs() }
+                    onNavigateBack = { parentFragmentManager.popBackStack() }
                 )
             }
         }
     }
 
     companion object {
-        const val TAG = "HomeFragment"
+        const val TAG = "LogsFragment"
     }
 }

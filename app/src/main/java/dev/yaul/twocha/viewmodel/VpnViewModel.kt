@@ -46,6 +46,10 @@ class VpnViewModel @Inject constructor(
     // Connection state from service
     val connectionState: StateFlow<ConnectionState> = TwochaVpnService.connectionState
 
+    // The native engine's actual failure detail behind the last ERROR state
+    // (bare logcat-only otherwise) — surfaced in the connection logs screen.
+    val lastError: StateFlow<String?> = TwochaVpnService.lastError
+
     // Stats from service
     val stats: StateFlow<VpnStats> = TwochaVpnService.stats
 
@@ -121,6 +125,25 @@ class VpnViewModel @Inject constructor(
         loadConfig()
         loadIdentity()
         observeConnectionStateForStats()
+        observeConnectionErrors()
+    }
+
+    /**
+     * The engine/setup failure behind an ERROR transition never reaches
+     * [connect]'s own try/catch (it happens inside [TwochaVpnService]'s
+     * background thread) — mirror it into the log list here so the
+     * connection-logs screen shows the real cause instead of a bare "Error".
+     */
+    private fun observeConnectionErrors() {
+        viewModelScope.launch {
+            connectionState.collect { state ->
+                if (state == ConnectionState.ERROR) {
+                    val message = lastError.value ?: "Connection failed (no further detail)"
+                    addLog(LogLevel.ERROR, message)
+                    _errorMessage.value = message
+                }
+            }
+        }
     }
 
     /** Load (generating on first use) this device's client identity public key. */

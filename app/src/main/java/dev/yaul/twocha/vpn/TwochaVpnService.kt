@@ -48,6 +48,12 @@ class TwochaVpnService : VpnService() {
         private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
         val connectionState: StateFlow<ConnectionState> = _connectionState
 
+        // The native engine's exception message (or setup failure) behind the
+        // last ERROR transition — bare logcat-only detail otherwise. Cleared
+        // on every fresh connect attempt.
+        private val _lastError = MutableStateFlow<String?>(null)
+        val lastError: StateFlow<String?> = _lastError
+
         private val _stats = MutableStateFlow(VpnStats())
         val stats: StateFlow<VpnStats> = _stats
 
@@ -121,6 +127,7 @@ class TwochaVpnService : VpnService() {
             configToml = config.toToml()
             privateKeyB64 = KeyManager(this).privateKeyB64()
 
+            _lastError.value = null
             _connectionState.value = ConnectionState.CONNECTING
             isRunning = true
             startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTING))
@@ -138,6 +145,7 @@ class TwochaVpnService : VpnService() {
             vpnInterface = tunFd
         } catch (e: Exception) {
             Log.e(TAG, "VPN setup failed", e)
+            _lastError.value = e.message ?: e.toString()
             _connectionState.value = ConnectionState.ERROR
             startForeground(NOTIFICATION_ID, createNotification(ConnectionState.ERROR))
             cleanup(preserveError = true)
@@ -154,6 +162,7 @@ class TwochaVpnService : VpnService() {
         // cumulative payload byte counters at ~1 Hz for the live traffic UI.
         val observer = object : TunnelObserver {
             override fun onConnected() {
+                _lastError.value = null
                 _connectionState.value = ConnectionState.CONNECTED
                 startForeground(NOTIFICATION_ID, createNotification(ConnectionState.CONNECTED))
                 Log.i(TAG, "VPN handshake complete; connected")
@@ -186,6 +195,7 @@ class TwochaVpnService : VpnService() {
                 // A deliberate stop also surfaces here as an error (the handshake
                 // aborts); only report ERROR if we're still the current session.
                 if (gen == generation) {
+                    _lastError.value = e.message ?: e.toString()
                     _connectionState.value = ConnectionState.ERROR
                     startForeground(NOTIFICATION_ID, createNotification(ConnectionState.ERROR))
                 }

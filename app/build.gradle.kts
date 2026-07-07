@@ -216,6 +216,16 @@ val nativeAbis = (findProperty("nativeAbis") as String?)
     ?.takeIf { it.isNotEmpty() }
     ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
 
+// Android ABI → Rust/cargo-ndk target triple. Used to locate the Go
+// libgoreality.so (REALITY transport) that the crate's build.rs drops in
+// target/<triple>/release/ so it can ship next to the app's own .so.
+val abiToRustTriple = mapOf(
+    "arm64-v8a" to "aarch64-linux-android",
+    "armeabi-v7a" to "armv7-linux-androideabi",
+    "x86_64" to "x86_64-linux-android",
+    "x86" to "i686-linux-android",
+)
+
 // Resolve the NDK: prefer an already-exported env (Nix dev shell / CI), else
 // fall back to the newest NDK installed under the configured Android SDK.
 fun resolveNdkHome(): String? {
@@ -247,9 +257,11 @@ val buildRustNative by tasks.registering(Exec::class) {
     description = "Compile twocha-mobile to per-ABI .so via cargo-ndk"
 
     workingDir = nativeRoot.asFile
+    // --features reality links the Go xtls/reality core per ABI (cargo-ndk exports
+    // the NDK clang as CC_<target>, which the crate's build.rs forwards to cgo).
     commandLine = listOf("cargo", "ndk") +
         nativeAbis.flatMap { listOf("-t", it) } +
-        listOf("-o", jniLibsDir.asFile.absolutePath, "build", "--release", "-p", "twocha-mobile")
+        listOf("-o", jniLibsDir.asFile.absolutePath, "build", "--release", "-p", "twocha-mobile", "--features", "reality")
 
     doFirst {
         if (!nativeManifest.asFile.exists()) {
@@ -268,7 +280,23 @@ val buildRustNative by tasks.registering(Exec::class) {
         nativeStamp.asFile.delete()
     }
 
-    doLast { nativeStamp.asFile.writeText(nativeHeadSha()) }
+    doLast {
+        // Ship the Go xtls/reality shared lib (emitted by twocha-lib's build.rs
+        // into target/<triple>/release/) next to the app's .so in each ABI dir;
+        // the app's libtwocha_mobile.so has a DT_NEEDED on it.
+        nativeAbis.forEach { abi ->
+            val triple = abiToRustTriple[abi]
+                ?: throw GradleException("no Rust triple mapping for ABI '$abi'")
+            val src = nativeRoot.file("target/$triple/release/libgoreality.so").asFile
+            if (!src.exists()) {
+                throw GradleException("libgoreality.so not found for $abi at $src")
+            }
+            val dst = jniLibsDir.dir(abi).file("libgoreality.so").asFile
+            dst.parentFile.mkdirs()
+            src.copyTo(dst, overwrite = true)
+        }
+        nativeStamp.asFile.writeText(nativeHeadSha())
+    }
 }
 
 val generateUniffiBindings by tasks.registering(Exec::class) {

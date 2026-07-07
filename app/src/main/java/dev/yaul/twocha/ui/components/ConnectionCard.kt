@@ -50,10 +50,12 @@ fun ShieldConnectButton(
     state: ConnectionState,
     serverAddress: String?,
     onToggle: () -> Unit,
+    onViewDetails: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isConnected = state == ConnectionState.CONNECTED
     val isConnecting = state == ConnectionState.CONNECTING || state == ConnectionState.DISCONNECTING
+    val isError = state == ConnectionState.ERROR
 
     val statusColor by animateColorAsState(
         targetValue = when (state) {
@@ -144,6 +146,12 @@ fun ShieldConnectButton(
                 style = TextStyles.connectionStatus,
                 color = statusColor
             )
+
+            if (isError) {
+                TextButton(onClick = onViewDetails) {
+                    Text(text = stringResource(R.string.state_error_view_details))
+                }
+            }
 
             if (serverAddress != null && (isConnected || isConnecting)) {
                 Spacer(modifier = Modifier.height(Spacing.sm))

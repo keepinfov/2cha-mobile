@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
@@ -83,7 +84,8 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     viewModel: VpnViewModel,
     onNavigateToConfig: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToLogs: () -> Unit
 ) {
     val connectionState by viewModel.connectionState.collectAsState()
     val config by viewModel.config.collectAsState()
@@ -156,12 +158,13 @@ fun HomeScreen(
                 .padding(horizontal = Spacing.md, vertical = Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            HomeHeader(onOpenSettings = onNavigateToSettings)
+            HomeHeader(onOpenSettings = onNavigateToSettings, onOpenLogs = onNavigateToLogs)
 
             ShieldConnectButton(
                 state = connectionState,
                 serverAddress = config?.client?.server,
                 onToggle = handleToggle,
+                onViewDetails = onNavigateToLogs,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -188,7 +191,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeader(onOpenSettings: () -> Unit) {
+private fun HomeHeader(onOpenSettings: () -> Unit, onOpenLogs: () -> Unit) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
@@ -221,6 +224,24 @@ private fun HomeHeader(onOpenSettings: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
             }
+            IconButton(
+                onClick = onOpenLogs,
+                modifier = Modifier
+                    .size(TouchTargets.default)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        shape = CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Article,
+                    contentDescription = stringResource(R.string.logs_title),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.width(Spacing.xs))
+
             IconButton(
                 onClick = onOpenSettings,
                 modifier = Modifier

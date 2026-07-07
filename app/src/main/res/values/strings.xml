@@ -9,6 +9,7 @@
     <string name="state_connected">Connected</string>
     <string name="state_disconnecting">Disconnecting…</string>
     <string name="state_error">Error</string>
+    <string name="state_error_view_details">View details</string>
 
     <!-- Buttons -->
     <string name="btn_connect">Connect</string>

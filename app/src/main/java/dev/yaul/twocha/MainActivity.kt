@@ -17,6 +17,7 @@ import androidx.core.view.ViewCompat
 import dagger.hilt.android.AndroidEntryPoint
 import dev.yaul.twocha.ui.fragments.ConfigFragment
 import dev.yaul.twocha.ui.fragments.HomeFragment
+import dev.yaul.twocha.ui.fragments.LogsFragment
 import dev.yaul.twocha.ui.fragments.SettingsFragment
 import dev.yaul.twocha.viewmodel.VpnViewModel
 
@@ -124,6 +125,20 @@ class MainActivity : AppCompatActivity() {
             )
             .replace(R.id.fragment_container, SettingsFragment(), SettingsFragment.TAG)
             .addToBackStack(SettingsFragment.TAG)
+            .commit()
+    }
+
+    fun openLogs() {
+        supportFragmentManager
+            .beginTransaction()
+            .setCustomAnimations(
+                R.anim.slide_in_right,  // Enter: new fragment slides in from right
+                R.anim.slide_out_left,  // Exit: current fragment slides out to left
+                R.anim.slide_in_left,   // Pop enter: previous fragment slides in from left
+                R.anim.slide_out_right  // Pop exit: current fragment slides out to right
+            )
+            .replace(R.id.fragment_container, LogsFragment(), LogsFragment.TAG)
+            .addToBackStack(LogsFragment.TAG)
             .commit()
     }
 
