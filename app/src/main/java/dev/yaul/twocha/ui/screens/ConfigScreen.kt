@@ -402,6 +402,9 @@ fun ConfigScreen(
                         server = serverAddress,
                         transport = selectedTransport
                     ),
+                    // AWG wire params must match the server, so carry the
+                    // imported [awg] block through unchanged rather than drop it.
+                    awg = config?.awg,
                     tun = dev.yaul.twocha.config.TunSection(
                         mtu = mtu.toIntOrNull() ?: 1420
                     ),
@@ -516,6 +519,7 @@ private fun SaveConfigBottomSheet(
                         value = when (transport) {
                             Transport.QUIC -> "QUIC (UDP)"
                             Transport.TLS -> "TLS (TCP)"
+                            Transport.AWG -> "AWG (UDP)"
                         }
                     )
                     SaveSummaryRow(
@@ -873,6 +877,7 @@ private fun TransportDropdown(
     val label = when (selectedTransport) {
         Transport.QUIC -> "QUIC (UDP)"
         Transport.TLS -> "TLS (TCP)"
+        Transport.AWG -> "AWG (UDP)"
     }
 
     ExposedDropdownMenuBox(
@@ -931,6 +936,20 @@ private fun TransportDropdown(
                     }
                 },
                 onClick = { onTransportSelected(Transport.TLS); expanded = false }
+            )
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        Text("AWG (UDP)", maxLines = 1)
+                        Text(
+                            "AmneziaWG obfuscation — import from server config",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                },
+                onClick = { onTransportSelected(Transport.AWG); expanded = false }
             )
         }
     }
